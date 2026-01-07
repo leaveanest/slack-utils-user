@@ -777,3 +777,159 @@ mcp_voicevox_speak({
 - **Zodでバリデーション**: 全ての入力値を型安全に検証
 
 **Happy Coding! 🚀**
+
+---
+
+## 📦 slack-utils-user 固有の設定
+
+> **⚠️ 重要**: このプロジェクトの実装を開始する前に、必ず `docs/slack-utils-user-spec.md` を読んでください。
+> 仕様書には関数定義、ワークフロー、i18nメッセージ、型定義など、実装に必要な全ての情報が含まれています。
+
+### 仕様書の参照
+
+```bash
+# 実装前に必ず確認
+docs/slack-utils-user-spec.md
+```
+
+仕様書に含まれる情報:
+
+- 機能一覧と優先度
+- 権限モデルと承認フロー
+- API仕様と必要スコープ
+- 関数定義（TypeScript）
+- ワークフロー・トリガー定義
+- i18nメッセージ（ja.json / en.json）完全版
+- 型定義とZodスキーマ
+- テストパターン
+
+### プロジェクト概要
+
+**slack-utils-user** は、Slackユーザーのプロフィールおよびカスタムフィールドを管理するワークフローアプリケーションです。
+
+- **参考実装**: [slack-utils-channel](https://github.com/leaveanest/slack-utils-channel)
+- **承認パターン**: slack-utils-channelと同様のワークフロー
+
+### i18n設定（重要）
+
+**デフォルト言語は日本語（ja）** です。
+
+```typescript
+// lib/i18n/mod.ts
+let currentLocale = "ja";  // デフォルトは日本語
+
+export function detectLocale(): SupportedLocale {
+  const locale = Deno.env.get("LOCALE") || Deno.env.get("LANG") || "ja";
+  // ...
+  return "ja";  // フォールバックも日本語
+}
+```
+
+### 環境変数
+
+| 変数名                      | 必須 | 説明                                 |
+| --------------------------- | ---- | ------------------------------------ |
+| `SLACK_ADMIN_USER_TOKEN`    | ✅    | 他ユーザー更新用のUser Token (xoxp-) |
+| `SLACK_APPROVAL_CHANNEL_ID` | ✅    | 承認リクエスト送信先チャンネル       |
+| `LOCALE`                    | -    | ロケール設定（デフォルト: ja）       |
+
+### 実装する関数一覧
+
+| 関数名                    | callback_id                    | 優先度 |
+| ------------------------- | ------------------------------ | ------ |
+| ShowProfileUpdateForm     | `show_profile_update_form`     | 高     |
+| CheckUserPermissions      | `check_user_permissions`       | 高     |
+| UpdateUserProfile         | `update_user_profile`          | 高     |
+| UpdateCustomFields        | `update_custom_fields`         | 高     |
+| GetCustomFieldDefinitions | `get_custom_field_definitions` | 中     |
+| GetAuthorizedApprovers    | `get_authorized_approvers`     | 高     |
+
+### 承認ワークフローパターン
+
+slack-utils-channelと同じパターンを使用:
+
+1. **ローディングモーダル即時表示** - interactivityタイムアウト対策
+2. **バックグラウンド処理** - 権限チェック、承認者取得
+3. **モーダル更新** - 本来のフォームに切り替え
+4. **Block Actionsハンドラー** - 承認/却下ボタンの処理
+
+```typescript
+export default SlackFunction(FunctionDefinition, async ({ inputs, client, env }) => {
+  // 1. ローディングモーダル表示
+  // 2. 権限チェック
+  // 3. フォーム表示
+})
+  .addViewSubmissionHandler("form_callback_id", async ({ view, client }) => {
+    // フォーム送信 → 権限に応じて直接実行 or 承認リクエスト
+  })
+  .addBlockActionsHandler(["approve_profile_update"], async ({ action, body, client, env }) => {
+    // 承認処理 → プロフィール更新実行
+  })
+  .addBlockActionsHandler(["deny_profile_update"], async ({ action, body, client }) => {
+    // 却下処理 → 通知のみ
+  });
+```
+
+### 権限チェックロジック
+
+```typescript
+// 直接実行可能なケース
+const canExecuteDirectly =
+  isAdmin ||
+  isOwner ||
+  (isSelf && isAllowedField);
+
+// 承認が必要なケース
+const requiresApproval =
+  !isAdmin &&
+  !isOwner &&
+  (!isSelf || !isAllowedField);
+
+// 拒否されるケース（Admin専用フィールド）
+const isDenied =
+  !isAdmin &&
+  !isOwner &&
+  isAdminOnlyField;
+```
+
+### Admin User Token取得方法
+
+1. [Slack API Apps](https://api.slack.com/apps) で従来型Appを作成
+2. OAuth & Permissions → User Token Scopes に `users.profile:write` を追加
+3. Install to Workspace
+4. User OAuth Token (xoxp-) をコピー
+5. `.env` の `SLACK_ADMIN_USER_TOKEN` に設定
+
+### よくあるエラーと対処
+
+| エラー                | 原因                         | 対処                 |
+| --------------------- | ---------------------------- | -------------------- |
+| `missing_admin_token` | SLACK_ADMIN_USER_TOKEN未設定 | .envに設定           |
+| `user_not_found`      | 無効なユーザーID             | ユーザーID形式を確認 |
+| `cannot_update_admin` | 上位権限ユーザーの更新試行   | 権限チェックを追加   |
+| `rate_limited`        | APIレート制限                | リトライロジック追加 |
+| `field_not_allowed`   | 許可されていないフィールド   | 権限設定を確認       |
+
+### 関数実装チェックリスト
+
+新しい関数を作成する際:
+
+- [ ] **仕様書を確認**: `docs/slack-utils-user-spec.md`
+- [ ] `DefineFunction` で関数定義を作成
+- [ ] 入力/出力パラメータを定義
+- [ ] JSDocコメントを記載
+- [ ] Zodスキーマでバリデーション
+- [ ] i18nメッセージを使用（ハードコード禁止）
+- [ ] エラーハンドリングを実装
+- [ ] 正常系テストを作成
+- [ ] 異常系テストを作成
+- [ ] `manifest.ts` に関数を追加
+- [ ] `locales/ja.json` にメッセージ追加
+- [ ] `locales/en.json` にメッセージ追加
+
+### 参考リンク
+
+- [仕様書](docs/slack-utils-user-spec.md) - **必読**
+- [Slack API: users.profile.set](https://api.slack.com/methods/users.profile.set)
+- [Slack API: users.profile.get](https://api.slack.com/methods/users.profile.get)
+- [slack-utils-channel](https://github.com/leaveanest/slack-utils-channel) - 承認パターンの参考
