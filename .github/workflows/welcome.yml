@@ -19,15 +19,15 @@ jobs:
       - name: Send first interaction message
         uses: actions/first-interaction@v3
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          issue-message: |
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
             初めてのIssueありがとうございます！🎉
             リバネスのslack-utilsプロジェクトへようこそ。
             Thank you for opening your first issue! 🙌
             Welcome to the Leave a Nest slack-utils project.
             ガイドラインはこちらをご確認ください: https://github.com/${{ github.repository }}/blob/main/CONTRIBUTING.md
             ご不明点があれば遠慮なくお知らせください。
-          pr-message: |
+          pr_message: |
             初めてのPRありがとうございます！🚀
             リバネスのslack-utilsプロジェクトに貢献いただき感謝します。
             Thank you for submitting your first pull request! 🤝

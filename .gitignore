@@ -11,3 +11,8 @@ cov.lcov
 # Review materials (do not push)
 docs/review-prep.md
 docs/review-presentation.md
+
+# Claude Code local files (session-specific, do not push)
+.claude/memory/
+.claude/state/
+.claude/settings.local.json
