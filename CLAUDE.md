@@ -782,7 +782,8 @@ mcp_voicevox_speak({
 
 ## 📦 slack-utils-user 固有の設定
 
-> **⚠️ 重要**: このプロジェクトの実装を開始する前に、必ず `docs/slack-utils-user-spec.md` を読んでください。
+> **⚠️ 重要**: このプロジェクトの実装を開始する前に、必ず
+> `docs/slack-utils-user-spec.md` を読んでください。
 > 仕様書には関数定義、ワークフロー、i18nメッセージ、型定義など、実装に必要な全ての情報が含まれています。
 
 ### 仕様書の参照
@@ -805,9 +806,11 @@ docs/slack-utils-user-spec.md
 
 ### プロジェクト概要
 
-**slack-utils-user** は、Slackユーザーのプロフィールおよびカスタムフィールドを管理するワークフローアプリケーションです。
+**slack-utils-user**
+は、Slackユーザーのプロフィールおよびカスタムフィールドを管理するワークフローアプリケーションです。
 
-- **参考実装**: [slack-utils-channel](https://github.com/leaveanest/slack-utils-channel)
+- **参考実装**:
+  [slack-utils-channel](https://github.com/leaveanest/slack-utils-channel)
 - **承認パターン**: slack-utils-channelと同様のワークフロー
 
 ### i18n設定（重要）
@@ -816,12 +819,12 @@ docs/slack-utils-user-spec.md
 
 ```typescript
 // lib/i18n/mod.ts
-let currentLocale = "ja";  // デフォルトは日本語
+let currentLocale = "ja"; // デフォルトは日本語
 
 export function detectLocale(): SupportedLocale {
   const locale = Deno.env.get("LOCALE") || Deno.env.get("LANG") || "ja";
   // ...
-  return "ja";  // フォールバックも日本語
+  return "ja"; // フォールバックも日本語
 }
 ```
 
@@ -829,8 +832,8 @@ export function detectLocale(): SupportedLocale {
 
 | 変数名                      | 必須 | 説明                                 |
 | --------------------------- | ---- | ------------------------------------ |
-| `SLACK_ADMIN_USER_TOKEN`    | ✅    | 他ユーザー更新用のUser Token (xoxp-) |
-| `SLACK_APPROVAL_CHANNEL_ID` | ✅    | 承認リクエスト送信先チャンネル       |
+| `SLACK_ADMIN_USER_TOKEN`    | ✅   | 他ユーザー更新用のUser Token (xoxp-) |
+| `SLACK_APPROVAL_CHANNEL_ID` | ✅   | 承認リクエスト送信先チャンネル       |
 | `LOCALE`                    | -    | ロケール設定（デフォルト: ja）       |
 
 ### 実装する関数一覧
@@ -854,40 +857,46 @@ slack-utils-channelと同じパターンを使用:
 4. **Block Actionsハンドラー** - 承認/却下ボタンの処理
 
 ```typescript
-export default SlackFunction(FunctionDefinition, async ({ inputs, client, env }) => {
-  // 1. ローディングモーダル表示
-  // 2. 権限チェック
-  // 3. フォーム表示
-})
+export default SlackFunction(
+  FunctionDefinition,
+  async ({ inputs, client, env }) => {
+    // 1. ローディングモーダル表示
+    // 2. 権限チェック
+    // 3. フォーム表示
+  },
+)
   .addViewSubmissionHandler("form_callback_id", async ({ view, client }) => {
     // フォーム送信 → 権限に応じて直接実行 or 承認リクエスト
   })
-  .addBlockActionsHandler(["approve_profile_update"], async ({ action, body, client, env }) => {
-    // 承認処理 → プロフィール更新実行
-  })
-  .addBlockActionsHandler(["deny_profile_update"], async ({ action, body, client }) => {
-    // 却下処理 → 通知のみ
-  });
+  .addBlockActionsHandler(
+    ["approve_profile_update"],
+    async ({ action, body, client, env }) => {
+      // 承認処理 → プロフィール更新実行
+    },
+  )
+  .addBlockActionsHandler(
+    ["deny_profile_update"],
+    async ({ action, body, client }) => {
+      // 却下処理 → 通知のみ
+    },
+  );
 ```
 
 ### 権限チェックロジック
 
 ```typescript
 // 直接実行可能なケース
-const canExecuteDirectly =
-  isAdmin ||
+const canExecuteDirectly = isAdmin ||
   isOwner ||
   (isSelf && isAllowedField);
 
 // 承認が必要なケース
-const requiresApproval =
-  !isAdmin &&
+const requiresApproval = !isAdmin &&
   !isOwner &&
   (!isSelf || !isAllowedField);
 
 // 拒否されるケース（Admin専用フィールド）
-const isDenied =
-  !isAdmin &&
+const isDenied = !isAdmin &&
   !isOwner &&
   isAdminOnlyField;
 ```
@@ -932,4 +941,5 @@ const isDenied =
 - [仕様書](docs/slack-utils-user-spec.md) - **必読**
 - [Slack API: users.profile.set](https://api.slack.com/methods/users.profile.set)
 - [Slack API: users.profile.get](https://api.slack.com/methods/users.profile.get)
-- [slack-utils-channel](https://github.com/leaveanest/slack-utils-channel) - 承認パターンの参考
+- [slack-utils-channel](https://github.com/leaveanest/slack-utils-channel) -
+  承認パターンの参考
