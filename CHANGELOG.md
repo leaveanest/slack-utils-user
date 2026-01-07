@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 (2026-01-07)
+
+
+### Bug Fixes
+
+* first-interaction アクションのパラメータ名を修正 ([b7665d1](https://github.com/leaveanest/slack-utils-user/commit/b7665d1c6aa08645d39c0cb3be47b508b9cdd1e9))
+
 ## [1.7.0](https://github.com/leaveanest/slack-utils/compare/v1.6.0...v1.7.0) (2025-10-30)
 
 
