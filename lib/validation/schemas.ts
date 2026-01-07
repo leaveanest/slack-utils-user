@@ -1,22 +1,22 @@
 /**
- * 共通バリデーションスキーマ
- * Zodを使用した型安全なバリデーション
- * i18n対応のエラーメッセージをサポート
+ * Validation schemas for slack-utils-user
+ *
+ * Zod-based type-safe validation with i18n-supported error messages.
  */
 import { z } from "zod";
 import { initI18n, t } from "../i18n/mod.ts";
 
-// トップレベルawaitでi18nを初期化
+// Initialize i18n at top level
 await initI18n();
 
 /**
- * i18n対応のSlackチャンネル ID スキーマを生成
- * 形式: C + 英数字大文字
+ * Create i18n-aware Slack channel ID schema
+ * Format: C + uppercase alphanumeric characters
  *
- * エラーメッセージは検証時に動的に評価されるため、
- * ロケール変更に対応します。
+ * Error messages are evaluated dynamically at validation time,
+ * supporting locale changes.
  *
- * @returns Zodスキーマ
+ * @returns Zod schema
  *
  * @example
  * ```typescript
@@ -47,13 +47,13 @@ export function createChannelIdSchema() {
 }
 
 /**
- * i18n対応のSlack ユーザー ID スキーマを生成
- * 形式: U または W + 英数字大文字
+ * Create i18n-aware Slack user ID schema
+ * Format: U or W + uppercase alphanumeric characters
  *
- * エラーメッセージは検証時に動的に評価されるため、
- * ロケール変更に対応します。
+ * Error messages are evaluated dynamically at validation time,
+ * supporting locale changes.
  *
- * @returns Zodスキーマ
+ * @returns Zod schema
  *
  * @example
  * ```typescript
@@ -84,12 +84,12 @@ export function createUserIdSchema() {
 }
 
 /**
- * i18n対応の空でない文字列スキーマを生成
+ * Create i18n-aware non-empty string schema
  *
- * エラーメッセージは検証時に動的に評価されるため、
- * ロケール変更に対応します。
+ * Error messages are evaluated dynamically at validation time,
+ * supporting locale changes.
  *
- * @returns Zodスキーマ
+ * @returns Zod schema
  *
  * @example
  * ```typescript
@@ -112,10 +112,68 @@ export function createNonEmptyStringSchema() {
 }
 
 /**
- * Slackチャンネル ID スキーマ（デフォルトインスタンス）
+ * Create i18n-aware display name schema
+ * Max 80 characters
  *
- * エラーメッセージは検証時に動的に評価されるため、
- * ロケール変更に自動的に対応します。
+ * @returns Zod schema
+ */
+export function createDisplayNameSchema() {
+  return z.string().superRefine((val, ctx) => {
+    if (val.length > 80) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_big,
+        maximum: 80,
+        type: "string",
+        inclusive: true,
+        message: t("errors.validation.display_name_too_long"),
+      });
+    }
+  }).optional();
+}
+
+/**
+ * Create i18n-aware title schema
+ * Max 100 characters
+ *
+ * @returns Zod schema
+ */
+export function createTitleSchema() {
+  return z.string().superRefine((val, ctx) => {
+    if (val.length > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_big,
+        maximum: 100,
+        type: "string",
+        inclusive: true,
+        message: t("errors.validation.title_too_long"),
+      });
+    }
+  }).optional();
+}
+
+/**
+ * Create i18n-aware phone schema
+ * Accepts digits, dashes, plus, spaces, and parentheses
+ *
+ * @returns Zod schema
+ */
+export function createPhoneSchema() {
+  return z.string().superRefine((val, ctx) => {
+    if (val.length > 0 && !/^[\d\-+\s()]*$/.test(val)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.invalid_string,
+        validation: "regex",
+        message: t("errors.validation.phone_invalid"),
+      });
+    }
+  }).optional();
+}
+
+/**
+ * Slack channel ID schema (default instance)
+ *
+ * Error messages are evaluated dynamically at validation time,
+ * automatically supporting locale changes.
  *
  * @example
  * ```typescript
@@ -125,10 +183,10 @@ export function createNonEmptyStringSchema() {
 export const channelIdSchema = createChannelIdSchema();
 
 /**
- * Slack ユーザー ID スキーマ（デフォルトインスタンス）
+ * Slack user ID schema (default instance)
  *
- * エラーメッセージは検証時に動的に評価されるため、
- * ロケール変更に自動的に対応します。
+ * Error messages are evaluated dynamically at validation time,
+ * automatically supporting locale changes.
  *
  * @example
  * ```typescript
@@ -138,10 +196,10 @@ export const channelIdSchema = createChannelIdSchema();
 export const userIdSchema = createUserIdSchema();
 
 /**
- * 空でない文字列スキーマ（デフォルトインスタンス）
+ * Non-empty string schema (default instance)
  *
- * エラーメッセージは検証時に動的に評価されるため、
- * ロケール変更に自動的に対応します。
+ * Error messages are evaluated dynamically at validation time,
+ * automatically supporting locale changes.
  *
  * @example
  * ```typescript
@@ -151,10 +209,40 @@ export const userIdSchema = createUserIdSchema();
 export const nonEmptyStringSchema = createNonEmptyStringSchema();
 
 /**
- * 型推論のエクスポート
+ * Display name schema (default instance)
+ */
+export const displayNameSchema = createDisplayNameSchema();
+
+/**
+ * Title schema (default instance)
+ */
+export const titleSchema = createTitleSchema();
+
+/**
+ * Phone schema (default instance)
+ */
+export const phoneSchema = createPhoneSchema();
+
+/**
+ * Profile update input validation schema
+ */
+export const profileUpdateInputSchema = z.object({
+  target_user_id: userIdSchema,
+  display_name: displayNameSchema,
+  title: titleSchema,
+  phone: phoneSchema,
+  pronouns: z.string().max(50).optional(),
+});
+
+/**
+ * Type inference exports
  */
 export type ChannelId = z.infer<ReturnType<typeof createChannelIdSchema>>;
 export type UserId = z.infer<ReturnType<typeof createUserIdSchema>>;
 export type NonEmptyString = z.infer<
   ReturnType<typeof createNonEmptyStringSchema>
 >;
+export type DisplayName = z.infer<ReturnType<typeof createDisplayNameSchema>>;
+export type Title = z.infer<ReturnType<typeof createTitleSchema>>;
+export type Phone = z.infer<ReturnType<typeof createPhoneSchema>>;
+export type ProfileUpdateInput = z.infer<typeof profileUpdateInputSchema>;
