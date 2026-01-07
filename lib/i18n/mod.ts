@@ -199,11 +199,11 @@ export async function initI18n(): Promise<void> {
   const locale = detectLocale();
   setLocale(locale);
 
-  // Load both Japanese (fallback) and current locale
-  await loadLocale("ja");
-  if (locale !== "ja") {
-    await loadLocale(locale);
-  }
+  // Load all supported locales to enable runtime locale switching
+  await Promise.all([
+    loadLocale("ja"),
+    loadLocale("en"),
+  ]);
 }
 
 // Auto-initialize if running in Deno
