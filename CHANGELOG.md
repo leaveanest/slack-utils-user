@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/leaveanest/slack-utils-user/compare/v1.0.1...v1.1.0) (2026-01-07)
+
+
+### Features
+
+* slack-utils-user 初期セットアップ ([f15a293](https://github.com/leaveanest/slack-utils-user/commit/f15a29314e33de78752e00837fe33d8438680bea))
+
+
+### Bug Fixes
+
+* initI18nで全ロケールをプリロードしてランタイム切替に対応 ([4eeb27f](https://github.com/leaveanest/slack-utils-user/commit/4eeb27ffc18e14bbaee2ac5c4dd3989bc2c9a020))
+* welcome.yml の組織名をリバネスナレッジに修正 ([245d55a](https://github.com/leaveanest/slack-utils-user/commit/245d55a2081c8bef873e8898188b9140ff0560ba))
+
 ## [1.0.1](https://github.com/leaveanest/slack-utils-user/compare/v1.0.0...v1.0.1) (2026-01-07)
 
 
