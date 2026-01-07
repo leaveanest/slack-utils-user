@@ -22,15 +22,15 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           issue_message: |
             初めてのIssueありがとうございます！🎉
-            リバネスのslack-utilsプロジェクトへようこそ。
+            リバネスナレッジのslack-utilsプロジェクトへようこそ。
             Thank you for opening your first issue! 🙌
-            Welcome to the Leave a Nest slack-utils project.
+            Welcome to the Leave a Nest Knowledge slack-utils project.
             ガイドラインはこちらをご確認ください: https://github.com/${{ github.repository }}/blob/main/CONTRIBUTING.md
             ご不明点があれば遠慮なくお知らせください。
           pr_message: |
             初めてのPRありがとうございます！🚀
-            リバネスのslack-utilsプロジェクトに貢献いただき感謝します。
+            リバネスナレッジのslack-utilsプロジェクトに貢献いただき感謝します。
             Thank you for submitting your first pull request! 🤝
-            We appreciate your contribution to the Leave a Nest slack-utils project.
+            We appreciate your contribution to the Leave a Nest Knowledge slack-utils project.
             作業フローやレビュー手順はCONTRIBUTINGガイドをご覧ください: https://github.com/${{ github.repository }}/blob/main/CONTRIBUTING.md
             継続的なコラボレーションを楽しみにしています！
