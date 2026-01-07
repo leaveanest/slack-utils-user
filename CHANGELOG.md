@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/leaveanest/slack-utils-user/compare/v1.0.0...v1.0.1) (2026-01-07)
+
+
+### Bug Fixes
+
+* add missing checks to pre-commit-test agent ([5e1b77d](https://github.com/leaveanest/slack-utils-user/commit/5e1b77d128ab47a87c9fd34e589c50ad89da904d))
+
 ## 1.0.0 (2026-01-07)
 
 
