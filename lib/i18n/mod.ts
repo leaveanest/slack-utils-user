@@ -7,7 +7,7 @@
 
 type LocaleData = Record<string, unknown>;
 
-let currentLocale = "en";
+let currentLocale = "ja";
 const localeCache: Map<string, LocaleData> = new Map();
 
 /**
@@ -44,13 +44,13 @@ export async function loadLocale(lang: string): Promise<LocaleData> {
     localeCache.set(lang, data);
     return data;
   } catch (error) {
-    // Fallback to English if locale not found
-    if (lang !== "en") {
+    // Fallback to Japanese if locale not found
+    if (lang !== "ja") {
       console.warn(
-        `Failed to load locale ${lang}, falling back to English:`,
+        `Failed to load locale ${lang}, falling back to Japanese:`,
         error,
       );
-      return await loadLocale("en");
+      return await loadLocale("ja");
     }
     throw error;
   }
@@ -77,21 +77,21 @@ export function getLocale(): string {
 /**
  * Detect locale from environment variables
  *
- * Checks LOCALE, LANG, and defaults to "en"
+ * Checks LOCALE, LANG, and defaults to "ja"
  *
  * @returns Detected locale code
  */
 export function detectLocale(): SupportedLocale {
   // Check LOCALE environment variable first
-  const locale = Deno.env.get("LOCALE") || Deno.env.get("LANG") || "en";
+  const locale = Deno.env.get("LOCALE") || Deno.env.get("LANG") || "ja";
 
   // Extract language code (e.g., "ja_JP.UTF-8" -> "ja")
   const langCode = locale.split(/[_.]/)[0].toLowerCase();
 
-  // Return if supported, otherwise default to English
+  // Return if supported, otherwise default to Japanese
   return SUPPORTED_LOCALES.includes(langCode as SupportedLocale)
     ? langCode as SupportedLocale
-    : "en";
+    : "ja";
 }
 
 /**
@@ -170,13 +170,13 @@ export function t(
   const message = getNestedValue(localeData, key);
 
   if (!message) {
-    // Try fallback to English
-    if (currentLocale !== "en") {
-      const enData = localeCache.get("en");
-      if (enData) {
-        const enMessage = getNestedValue(enData, key);
-        if (enMessage) {
-          return replacePlaceholders(enMessage, params);
+    // Try fallback to Japanese
+    if (currentLocale !== "ja") {
+      const jaData = localeCache.get("ja");
+      if (jaData) {
+        const jaMessage = getNestedValue(jaData, key);
+        if (jaMessage) {
+          return replacePlaceholders(jaMessage, params);
         }
       }
     }
@@ -199,11 +199,11 @@ export async function initI18n(): Promise<void> {
   const locale = detectLocale();
   setLocale(locale);
 
-  // Load both English (fallback) and current locale
-  await loadLocale("en");
-  if (locale !== "en") {
-    await loadLocale(locale);
-  }
+  // Load all supported locales to enable runtime locale switching
+  await Promise.all([
+    loadLocale("ja"),
+    loadLocale("en"),
+  ]);
 }
 
 // Auto-initialize if running in Deno

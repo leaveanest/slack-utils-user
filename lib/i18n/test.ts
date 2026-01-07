@@ -11,7 +11,7 @@ import {
 import { checkI18n } from "./check.ts";
 
 Deno.test({
-  name: "detectLocale: デフォルトは英語",
+  name: "detectLocale: デフォルトは日本語",
   sanitizeResources: false,
   sanitizeOps: false,
   fn: () => {
@@ -23,7 +23,7 @@ Deno.test({
       Deno.env.delete("LANG");
 
       const locale = detectLocale();
-      assertEquals(locale, "en");
+      assertEquals(locale, "ja");
     } finally {
       if (originalLocale) Deno.env.set("LOCALE", originalLocale);
       if (originalLang) Deno.env.set("LANG", originalLang);
@@ -122,19 +122,19 @@ Deno.test("t: プレースホルダーを置き換えられる", async () => {
   await initI18n();
   setLocale("en");
 
-  const message = t("errors.channel_not_found", { error: "not_found" });
-  assertEquals(message, "Failed to load channel info: not_found");
+  const message = t("errors.user_not_found", { userId: "U12345" });
+  assertEquals(message, "User not found: U12345");
 });
 
 Deno.test("t: 複数のプレースホルダーを置き換えられる", async () => {
   await initI18n();
   setLocale("en");
 
-  const message = t("messages.channel_summary", {
-    name: "general",
-    count: "42",
+  const message = t("logs.permissions_checked", {
+    isAdmin: "true",
+    isOwner: "false",
   });
-  assertEquals(message, "Channel: general, Members: 42");
+  assertEquals(message, "Permissions checked: is_admin=true, is_owner=false");
 });
 
 Deno.test("t: 存在しないキーの場合はキー自体を返す", async () => {
@@ -149,8 +149,8 @@ Deno.test("t: プレースホルダーが不足している場合は元の形式
   await initI18n();
   setLocale("en");
 
-  const message = t("errors.channel_not_found"); // errorパラメータなし
-  assertEquals(message, "Failed to load channel info: {error}");
+  const message = t("errors.user_not_found"); // userIdパラメータなし
+  assertEquals(message, "User not found: {userId}");
 });
 
 Deno.test("checkI18n: 全ての言語ファイルのキーが一致する", async () => {
