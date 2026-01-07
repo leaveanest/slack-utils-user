@@ -5,6 +5,7 @@
     "semantic-release": "npm:semantic-release@23",
     "@semantic-release/": "npm:@semantic-release/",
     "std/": "https://deno.land/std@0.200.0/",
-    "zod": "npm:zod@^3.24"
+    "zod": "npm:zod@^3.24",
+    "mock-fetch/": "https://deno.land/x/mock_fetch@0.3.0/"
   }
 }

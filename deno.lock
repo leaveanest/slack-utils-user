@@ -2745,7 +2745,13 @@
       "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="
     }
   },
+  "redirects": {
+    "https://crux.land/api/get/2KNRVU": "https://crux.land/api/get/2KNRVU.ts",
+    "https://crux.land/api/get/router@0.0.5": "https://crux.land/api/get/2KNRVU",
+    "https://crux.land/router@0.0.5": "https://crux.land/api/get/router@0.0.5"
+  },
   "remote": {
+    "https://crux.land/api/get/2KNRVU.ts": "6a77d55844aba78d01520c5ff0b2f0af7f24cc1716a0de8b3bb6bd918c47b5ba",
     "https://deno.land/std@0.134.0/_deno_unstable.ts": "23a1a36928f1b6d3b0170aaa67de09af12aa998525f608ff7331b9fb364cbde6",
     "https://deno.land/std@0.134.0/_util/assert.ts": "e94f2eb37cebd7f199952e242c77654e43333c1ac4c5c700e929ea3aa5489f74",
     "https://deno.land/std@0.134.0/_util/os.ts": "49b92edea1e82ba295ec946de8ffd956ed123e2948d9bd1d3e901b04e4307617",
@@ -3262,7 +3268,8 @@
     "https://deno.land/x/deno_slack_sdk@2.15.1/types/types.ts": "8f402db92718cb06168f83a78677416fe44fde408a657da5c89451d4eb09f748",
     "https://deno.land/x/deno_slack_sdk@2.15.1/workflows/mod.ts": "96d3a5f441bab0896af2e5324bf0f84f551325aebaba22b2a4faa7de757023d9",
     "https://deno.land/x/deno_slack_sdk@2.15.1/workflows/types.ts": "c2ce90fd410ee3810ac537f2d6c8418b6593643210d1968339c9afd1d1e8fbcb",
-    "https://deno.land/x/deno_slack_sdk@2.15.1/workflows/workflow-step.ts": "01c6f73be9566a28f5690f2d5b4c8345ca039cd710b4902ad8abedfcd9e03d09"
+    "https://deno.land/x/deno_slack_sdk@2.15.1/workflows/workflow-step.ts": "01c6f73be9566a28f5690f2d5b4c8345ca039cd710b4902ad8abedfcd9e03d09",
+    "https://deno.land/x/mock_fetch@0.3.0/mod.ts": "7e7806c65ab17b2b684c334c4e565812bdaf504a3e9c938d2bb52bb67428bc89"
   },
   "workspace": {
     "dependencies": [
