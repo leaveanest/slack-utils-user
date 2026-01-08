@@ -1,12 +1,14 @@
 import { Manifest } from "deno-slack-sdk/mod.ts";
 
-// TODO: Import function definitions when implemented
-// import { UpdateUserProfileDefinition } from "./functions/update_user_profile/mod.ts";
+// Import function definitions
+import { UpdateUserProfileDefinition } from "./functions/update_user_profile/mod.ts";
+import { CheckUserPermissionsDefinition } from "./functions/check_user_permissions/mod.ts";
+import { ShowProfileUpdateFormDefinition } from "./functions/show_profile_update_form/mod.ts";
+import { GetAuthorizedApproversDefinition } from "./functions/get_authorized_approvers/mod.ts";
+
+// TODO: Import additional function definitions when implemented
 // import { UpdateCustomFieldsDefinition } from "./functions/update_custom_fields/mod.ts";
-// import { CheckUserPermissionsDefinition } from "./functions/check_user_permissions/mod.ts";
 // import { GetCustomFieldDefinitionsDefinition } from "./functions/get_custom_field_definitions/mod.ts";
-// import { ShowProfileUpdateFormDefinition } from "./functions/show_profile_update_form/mod.ts";
-// import { GetAuthorizedApproversDefinition } from "./functions/get_authorized_approvers/mod.ts";
 
 // TODO: Import workflow definitions when implemented
 // import UpdateProfileWorkflow from "./workflows/update_profile_workflow.ts";
@@ -23,8 +25,12 @@ export default Manifest({
   icon: "assets/icon.png",
   // TODO: Add workflows when implemented
   workflows: [],
-  // TODO: Add functions when implemented
-  functions: [],
+  functions: [
+    UpdateUserProfileDefinition,
+    CheckUserPermissionsDefinition,
+    ShowProfileUpdateFormDefinition,
+    GetAuthorizedApproversDefinition,
+  ],
   outgoingDomains: [],
   botScopes: [
     "commands", // スラッシュコマンド
@@ -32,7 +38,6 @@ export default Manifest({
     "chat:write.public", // 公開チャンネルへの送信
     "users:read", // ユーザー情報読み取り
     "users.profile:read", // プロフィール読み取り
-    "team.profile:read", // チーム設定読み取り
     "im:write", // DM送信
   ],
 });

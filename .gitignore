@@ -16,3 +16,6 @@ docs/review-presentation.md
 .claude/memory/
 .claude/state/
 .claude/settings.local.json
+
+# Auto Claude data directory
+.auto-claude/

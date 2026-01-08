@@ -8,6 +8,7 @@
     "jsr:@std/internal@^1.0.10": "1.0.12",
     "jsr:@std/internal@^1.0.12": "1.0.12",
     "jsr:@std/jsonc@^1.0.1": "1.0.2",
+    "jsr:@std/path@1.1.0": "1.1.0",
     "jsr:@std/path@^1.0.3": "1.1.2",
     "npm:@types/node@*": "24.2.0",
     "npm:semantic-release@23": "23.1.1_marked@12.0.2",
@@ -37,6 +38,9 @@
     },
     "@std/jsonc@1.0.2": {
       "integrity": "909605dae3af22bd75b1cbda8d64a32cf1fd2cf6efa3f9e224aba6d22c0f44c7"
+    },
+    "@std/path@1.1.0": {
+      "integrity": "ddc94f8e3c275627281cbc23341df6b8bcc874d70374f75fec2533521e3d6886"
     },
     "@std/path@1.1.2": {
       "integrity": "c0b13b97dfe06546d5e16bf3966b1cadf92e1cc83e56ba5476ad8b498d9e3038",
@@ -2745,7 +2749,13 @@
       "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="
     }
   },
+  "redirects": {
+    "https://crux.land/api/get/2KNRVU": "https://crux.land/api/get/2KNRVU.ts",
+    "https://crux.land/api/get/router@0.0.5": "https://crux.land/api/get/2KNRVU",
+    "https://crux.land/router@0.0.5": "https://crux.land/api/get/router@0.0.5"
+  },
   "remote": {
+    "https://crux.land/api/get/2KNRVU.ts": "6a77d55844aba78d01520c5ff0b2f0af7f24cc1716a0de8b3bb6bd918c47b5ba",
     "https://deno.land/std@0.134.0/_deno_unstable.ts": "23a1a36928f1b6d3b0170aaa67de09af12aa998525f608ff7331b9fb364cbde6",
     "https://deno.land/std@0.134.0/_util/assert.ts": "e94f2eb37cebd7f199952e242c77654e43333c1ac4c5c700e929ea3aa5489f74",
     "https://deno.land/std@0.134.0/_util/os.ts": "49b92edea1e82ba295ec946de8ffd956ed123e2948d9bd1d3e901b04e4307617",
@@ -3089,6 +3099,7 @@
     "https://deno.land/x/deno_slack_hooks@1.0.0/libraries.ts": "48c3cc3471615a1f57e67a695505e56a403818db01cfb6958d513c181614fad7",
     "https://deno.land/x/deno_slack_hooks@1.0.0/utilities.ts": "809a36c2a82986045f778d1cd74d026cb906498891545e55b92df82704b0492b",
     "https://deno.land/x/deno_slack_hooks@1.0.0/version.ts": "022ed2be97d9cfaf22dc69a4a2484c1d56fd90476c0948433d6f25dac533de46",
+    "https://deno.land/x/deno_slack_hooks@1.4.0/check_update.ts": "bbf2d4ae838afdbe710b599aa2ab1af6ad46c723f15810dbe10923493d73be87",
     "https://deno.land/x/deno_slack_hooks@1.4.0/flags.ts": "46c5e4281aa3e3d1fd794bd77eaef2bd120d331abec8cb7924570e8fe2e7e59b",
     "https://deno.land/x/deno_slack_hooks@1.4.0/get_manifest.ts": "c080705e24c19408ac44391b8ca9ad22631f13ba554a80cb0f554f7677a39bdd",
     "https://deno.land/x/deno_slack_hooks@1.4.0/libraries.ts": "8e8d49d42fcfb69e39c91cb44d1f6a1400741b694bebf39e6adab6e9459c1122",
@@ -3262,7 +3273,8 @@
     "https://deno.land/x/deno_slack_sdk@2.15.1/types/types.ts": "8f402db92718cb06168f83a78677416fe44fde408a657da5c89451d4eb09f748",
     "https://deno.land/x/deno_slack_sdk@2.15.1/workflows/mod.ts": "96d3a5f441bab0896af2e5324bf0f84f551325aebaba22b2a4faa7de757023d9",
     "https://deno.land/x/deno_slack_sdk@2.15.1/workflows/types.ts": "c2ce90fd410ee3810ac537f2d6c8418b6593643210d1968339c9afd1d1e8fbcb",
-    "https://deno.land/x/deno_slack_sdk@2.15.1/workflows/workflow-step.ts": "01c6f73be9566a28f5690f2d5b4c8345ca039cd710b4902ad8abedfcd9e03d09"
+    "https://deno.land/x/deno_slack_sdk@2.15.1/workflows/workflow-step.ts": "01c6f73be9566a28f5690f2d5b4c8345ca039cd710b4902ad8abedfcd9e03d09",
+    "https://deno.land/x/mock_fetch@0.3.0/mod.ts": "7e7806c65ab17b2b684c334c4e565812bdaf504a3e9c938d2bb52bb67428bc89"
   },
   "workspace": {
     "dependencies": [
