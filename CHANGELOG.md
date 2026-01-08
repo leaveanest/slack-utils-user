@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/leaveanest/slack-utils-user/compare/v1.1.0...v1.2.0) (2026-01-08)
+
+
+### Features
+
+* プロフィール管理のコア関数を実装 ([e1d58bb](https://github.com/leaveanest/slack-utils-user/commit/e1d58bb92dc4eba5cbb79dbc2235c55f2a5ad908))
+
+
+### Bug Fixes
+
+* deno checkに--allow-importフラグを追加 ([2c369a4](https://github.com/leaveanest/slack-utils-user/commit/2c369a4a4105a75d7f87513ce0b8558fb568846a))
+* P2レビュー指摘を修正 ([ae841fe](https://github.com/leaveanest/slack-utils-user/commit/ae841fe63713c32e65f3bf70bbb49da3e1a62b89))
+* Slackマニフェスト検証エラーを修正 ([d2986aa](https://github.com/leaveanest/slack-utils-user/commit/d2986aacedb047c83105db2d04208c0309afecec))
+
 ## [1.1.0](https://github.com/leaveanest/slack-utils-user/compare/v1.0.1...v1.1.0) (2026-01-07)
 
 
