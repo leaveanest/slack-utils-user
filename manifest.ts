@@ -40,7 +40,7 @@ export default Manifest({
     "chat:write.public", // 公開チャンネルへの送信
     "users:read", // ユーザー情報読み取り
     "users.profile:read", // プロフィール読み取り
-    "team.profile:read", // チーム設定読み取り
+    "team:read", // チーム情報読み取り（カスタムフィールド定義取得に必要）
     "im:write", // DM送信
   ],
 });

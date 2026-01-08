@@ -166,7 +166,7 @@ interface PermissionConfig {
 | API                  | 用途                       | スコープ             |
 | -------------------- | -------------------------- | -------------------- |
 | `users.profile.get`  | ユーザープロフィール取得   | `users.profile:read` |
-| `team.profile.get`   | カスタムフィールド定義取得 | `team.profile:read`  |
+| `team.profile.get`   | カスタムフィールド定義取得 | `team:read`          |
 | `users.list`         | ユーザー一覧取得           | `users:read`         |
 | `users.info`         | ユーザー詳細取得           | `users:read`         |
 | `chat.postMessage`   | メッセージ送信             | `chat:write`         |
@@ -188,7 +188,7 @@ botScopes: [
   "chat:write.public",       // 公開チャンネルへの送信
   "users:read",              // ユーザー情報読み取り
   "users.profile:read",      // プロフィール読み取り
-  "team.profile:read",       // チーム設定読み取り
+  "team:read",               // チーム情報読み取り（カスタムフィールド定義取得に必要）
   "im:write",                // DM送信
 ],
 ```
@@ -929,7 +929,7 @@ export default Manifest({
     "chat:write.public",
     "users:read",
     "users.profile:read",
-    "team.profile:read",
+    "team:read",
     "im:write",
   ],
 });

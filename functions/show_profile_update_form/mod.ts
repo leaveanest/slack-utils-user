@@ -15,7 +15,7 @@
  */
 
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import { t } from "../../lib/i18n/mod.ts";
+import { initI18n, t } from "../../lib/i18n/mod.ts";
 import {
   DEFAULT_PERMISSION_CONFIG,
   type PermissionConfig,
@@ -435,7 +435,9 @@ async function checkUserPermissions(
   },
   userId: string,
 ): Promise<{ isAdminOrOwner: boolean; error?: string }> {
+  console.log("[checkUserPermissions] Calling users.info with userId:", userId);
   const response = await client.users.info({ user: userId });
+  console.log("[checkUserPermissions] Response ok:", response.ok, "error:", response.error);
   if (!response.ok) {
     return { isAdminOrOwner: false, error: response.error };
   }
@@ -457,37 +459,81 @@ interface FetchApproversResult {
 }
 
 /**
- * Fetch authorized approvers
+ * admin.users.list APIのレスポンス型
+ */
+interface AdminUsersListResponse {
+  ok: boolean;
+  users?: Array<{
+    id: string;
+    username?: string;
+    full_name?: string;
+    email?: string;
+    is_admin?: boolean;
+    is_owner?: boolean;
+    is_primary_owner?: boolean;
+    is_bot?: boolean;
+    deleted?: boolean;
+    is_active?: boolean;
+    is_restricted?: boolean;
+    is_ultra_restricted?: boolean;
+  }>;
+  response_metadata?: {
+    next_cursor?: string;
+  };
+  error?: string;
+}
+
+/**
+ * Fetch authorized approvers using admin.users.list API
  */
 async function fetchApprovers(
-  client: {
-    users: {
-      list: (params: { cursor?: string; limit: number }) => Promise<{
-        ok: boolean;
-        error?: string;
-        members?: Array<{
-          id?: string;
-          name?: string;
-          real_name?: string;
-          is_admin?: boolean;
-          is_owner?: boolean;
-          is_primary_owner?: boolean;
-          is_bot?: boolean;
-          deleted?: boolean;
-        }>;
-        response_metadata?: { next_cursor?: string };
-      }>;
-    };
-  },
+  adminToken: string,
+  teamId: string,
   excludeUserId?: string,
 ): Promise<FetchApproversResult> {
   const approvers: Array<{ id: string; name: string; real_name?: string }> = [];
   let cursor: string | undefined;
 
+  // 無限ループを防ぐための最大ページ数制限
+  const MAX_PAGES = 50;
+  let pageCount = 0;
+
   do {
-    const response = await client.users.list({ cursor, limit: 200 });
-    if (!response.ok) {
-      const errorCode = response.error ?? "unknown_error";
+    pageCount++;
+    if (pageCount > MAX_PAGES) {
+      console.warn(
+        t("logs.max_page_limit_reached", { limit: MAX_PAGES }),
+      );
+      break;
+    }
+
+    const params = new URLSearchParams({
+      team_id: teamId,
+      limit: "200",
+    });
+
+    if (cursor) {
+      params.append("cursor", cursor);
+    }
+
+    console.log("[fetchApprovers] Calling admin.users.list with cursor:", cursor);
+    const response = await fetch(
+      `https://slack.com/api/admin.users.list?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${adminToken}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+      },
+    );
+
+    const result: AdminUsersListResponse = await response.json();
+
+    console.log("[fetchApprovers] Response ok:", result.ok, "error:", result.error, "users count:", result.users?.length);
+
+    if (!result.ok) {
+      const errorCode = result.error ?? "unknown_error";
       console.error(t("errors.api_call_failed", { error: errorCode }));
       return {
         approvers: [],
@@ -495,22 +541,32 @@ async function fetchApprovers(
       };
     }
 
-    if (response.members) {
-      for (const member of response.members) {
-        if (member.is_bot || member.deleted) continue;
-        if (excludeUserId && member.id === excludeUserId) continue;
-        if (member.is_admin || member.is_owner || member.is_primary_owner) {
+    if (result.users) {
+      for (const user of result.users) {
+        if (user.is_bot || user.deleted || user.is_restricted || user.is_ultra_restricted) continue;
+        if (excludeUserId && user.id === excludeUserId) continue;
+        if (user.is_admin || user.is_owner || user.is_primary_owner) {
+          // 既に追加済みのユーザーはスキップ
+          if (approvers.some((u) => u.id === user.id)) {
+            continue;
+          }
+
           approvers.push({
-            id: member.id ?? "",
-            name: member.name ?? "",
-            real_name: member.real_name,
+            id: user.id,
+            name: user.username ?? "",
+            real_name: user.full_name ?? "",
           });
         }
       }
     }
 
-    cursor = response.response_metadata?.next_cursor;
-  } while (cursor);
+    // カーソルチェックの改善: 空文字列、undefined、同じカーソルの場合はループ終了
+    const newCursor = result.response_metadata?.next_cursor;
+    if (!newCursor || newCursor === "" || newCursor === cursor) {
+      break;
+    }
+    cursor = newCursor;
+  } while (true);
 
   return { approvers };
 }
@@ -594,17 +650,23 @@ async function sendDirectMessage(
  */
 export default SlackFunction(
   ShowProfileUpdateFormDefinition,
-  async ({ inputs, client }) => {
+  async ({ inputs, client, env }) => {
+    // Initialize i18n system
+    await initI18n();
+
     const { interactivity, user_id, channel_id: _channel_id } = inputs;
 
     console.log(t("logs.starting"));
+    console.log("[Main] user_id:", user_id, "trigger_id:", interactivity.interactivity_pointer);
 
     try {
       // 1. Show loading modal immediately
+      console.log("[views.open] Calling...");
       const loadingResult = await client.views.open({
         trigger_id: interactivity.interactivity_pointer,
         view: buildLoadingView(),
       });
+      console.log("[views.open] Response ok:", loadingResult.ok, "error:", loadingResult.error);
 
       if (!loadingResult.ok) {
         console.error(
@@ -620,11 +682,32 @@ export default SlackFunction(
 
       const viewId = loadingResult.view?.id;
 
+      // Get admin token and team_id
+      const adminToken = env.SLACK_ADMIN_USER_TOKEN;
+      if (!adminToken) {
+        return {
+          error: t("errors.missing_admin_token"),
+          outputs: { success: false },
+        };
+      }
+
+      // Get team_id using auth.test
+      const authResponse = await client.auth.test();
+      if (!authResponse.ok || !authResponse.team_id) {
+        return {
+          error: t("errors.api_call_failed", { error: authResponse.error ?? "no_team_id" }),
+          outputs: { success: false },
+        };
+      }
+      const teamId = authResponse.team_id as string;
+
       // 2. Fetch user permissions and approvers in parallel
+      console.log("[Promise.all] Starting parallel fetch for user_id:", user_id);
       const [permResult, approversResult] = await Promise.all([
         checkUserPermissions(client, user_id),
-        fetchApprovers(client, user_id),
+        fetchApprovers(adminToken, teamId, user_id),
       ]);
+      console.log("[Promise.all] Completed. permResult.error:", permResult.error, "approversResult.error:", approversResult.error);
 
       if (permResult.error) {
         return {
