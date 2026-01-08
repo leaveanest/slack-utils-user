@@ -9,12 +9,14 @@
   "fmt": {
     "exclude": [
       "CHANGELOG.md",
-      "cov/"
+      "cov/",
+      "Auto-Claude/"
     ]
   },
   "lint": {
     "exclude": [
-      "cov/"
+      "cov/",
+      "Auto-Claude/"
     ]
   },
   "tasks": {
