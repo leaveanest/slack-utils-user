@@ -31,14 +31,13 @@ export default Manifest({
     ShowProfileUpdateFormDefinition,
     GetAuthorizedApproversDefinition,
   ],
-  outgoingDomains: ["slack.com"],
+  outgoingDomains: [],
   botScopes: [
     "commands", // スラッシュコマンド
     "chat:write", // メッセージ送信
     "chat:write.public", // 公開チャンネルへの送信
     "users:read", // ユーザー情報読み取り
     "users.profile:read", // プロフィール読み取り
-    "team.profile:read", // チーム設定読み取り
     "im:write", // DM送信
   ],
 });

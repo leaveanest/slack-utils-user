@@ -55,6 +55,21 @@ function mockApiError(errorCode: string) {
   };
 }
 
+/**
+ * Parse approvers from JSON output
+ */
+function parseApprovers(json: string | undefined) {
+  if (!json) return [];
+  return JSON.parse(json) as Array<{
+    id: string;
+    name: string;
+    real_name?: string;
+    is_admin: boolean;
+    is_owner: boolean;
+    is_primary_owner: boolean;
+  }>;
+}
+
 Deno.test("GetAuthorizedApprovers - 関数定義が正しく設定されている", () => {
   assertEquals(
     GetAuthorizedApproversDefinition.definition.callback_id,
@@ -99,9 +114,9 @@ Deno.test("GetAuthorizedApprovers - Admin/Ownerユーザーを正しく取得で
   const result = await handler(context);
 
   assertEquals(result.outputs?.count, 3);
-  assertEquals(result.outputs?.approvers?.length, 3);
+  assertEquals(result.outputs?.approver_ids?.length, 3);
 
-  const approverIds = result.outputs?.approvers?.map((a) => a.id);
+  const approverIds = result.outputs?.approver_ids;
   assertEquals(approverIds?.includes("U001"), true);
   assertEquals(approverIds?.includes("U002"), true);
   assertEquals(approverIds?.includes("U003"), true);
@@ -127,7 +142,7 @@ Deno.test("GetAuthorizedApprovers - ボットと削除済みユーザーを除�
   const result = await handler(context);
 
   assertEquals(result.outputs?.count, 1);
-  assertEquals(result.outputs?.approvers?.[0].id, "U001");
+  assertEquals(result.outputs?.approver_ids?.[0], "U001");
 
   mf.reset();
 });
@@ -148,7 +163,7 @@ Deno.test("GetAuthorizedApprovers - exclude_user_idで指定したユーザー�
   const result = await handler(context);
 
   assertEquals(result.outputs?.count, 1);
-  assertEquals(result.outputs?.approvers?.[0].id, "U002");
+  assertEquals(result.outputs?.approver_ids?.[0], "U002");
 
   mf.reset();
 });
@@ -169,7 +184,7 @@ Deno.test("GetAuthorizedApprovers - Admin/Ownerが存在しない場合は空配
   const result = await handler(context);
 
   assertEquals(result.outputs?.count, 0);
-  assertEquals(result.outputs?.approvers?.length, 0);
+  assertEquals(result.outputs?.approver_ids?.length, 0);
 
   mf.reset();
 });
@@ -208,7 +223,7 @@ Deno.test("GetAuthorizedApprovers - ページネーションを正しく処理�
   const result = await handler(context);
 
   assertEquals(result.outputs?.count, 4);
-  assertEquals(result.outputs?.approvers?.length, 4);
+  assertEquals(result.outputs?.approver_ids?.length, 4);
 
   mf.reset();
 });
@@ -224,14 +239,14 @@ Deno.test("GetAuthorizedApprovers - APIエラー時にエラーを返す", async
   const result = await handler(context);
 
   assertEquals(result.outputs?.count, 0);
-  assertEquals(result.outputs?.approvers?.length, 0);
+  assertEquals(result.outputs?.approver_ids?.length, 0);
   assertEquals(typeof result.error, "string");
   assertEquals(result.error?.includes("users_list_not_allowed"), true);
 
   mf.reset();
 });
 
-Deno.test("GetAuthorizedApprovers - approverの属性が正しく設定される", async () => {
+Deno.test("GetAuthorizedApprovers - approverの属性がJSON形式で正しく設定される", async () => {
   mf.mock("POST@/api/users.list", () => {
     return new Response(
       JSON.stringify(
@@ -252,7 +267,10 @@ Deno.test("GetAuthorizedApprovers - approverの属性が正しく設定される
   const context = createContext({ inputs: {} });
   const result = await handler(context);
 
-  const approver = result.outputs?.approvers?.[0];
+  const approvers = parseApprovers(result.outputs?.approvers_json);
+  assertEquals(approvers.length, 1);
+
+  const approver = approvers[0];
   assertEquals(approver?.id, "U001");
   assertEquals(approver?.name, "full_approver");
   assertEquals(approver?.real_name, "Full Approver");

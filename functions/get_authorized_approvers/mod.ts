@@ -38,21 +38,14 @@ export const GetAuthorizedApproversDefinition = DefineFunction({
   },
   output_parameters: {
     properties: {
-      approvers: {
+      approver_ids: {
         type: Schema.types.array,
-        items: {
-          type: Schema.types.object,
-          properties: {
-            id: { type: Schema.types.string },
-            name: { type: Schema.types.string },
-            real_name: { type: Schema.types.string },
-            is_admin: { type: Schema.types.boolean },
-            is_owner: { type: Schema.types.boolean },
-            is_primary_owner: { type: Schema.types.boolean },
-          },
-          required: ["id", "name", "is_admin", "is_owner"],
-        },
-        description: "承認可能なユーザーの一覧",
+        items: { type: Schema.types.string },
+        description: "承認可能なユーザーIDの一覧",
+      },
+      approvers_json: {
+        type: Schema.types.string,
+        description: "承認者詳細情報（JSON形式）",
       },
       count: {
         type: Schema.types.integer,
@@ -63,7 +56,7 @@ export const GetAuthorizedApproversDefinition = DefineFunction({
         description: "エラーメッセージ（失敗時）",
       },
     },
-    required: ["approvers", "count"],
+    required: ["approver_ids", "count"],
   },
 });
 
@@ -114,7 +107,8 @@ export default SlackFunction(
           return {
             error: t("errors.api_call_failed", { error: errorCode }),
             outputs: {
-              approvers: [],
+              approver_ids: [],
+              approvers_json: "[]",
               count: 0,
             },
           };
@@ -158,7 +152,8 @@ export default SlackFunction(
 
       return {
         outputs: {
-          approvers,
+          approver_ids: approvers.map((a) => a.id),
+          approvers_json: JSON.stringify(approvers),
           count: approvers.length,
         },
       };
@@ -168,7 +163,8 @@ export default SlackFunction(
       return {
         error: t("errors.api_call_failed", { error: message }),
         outputs: {
-          approvers: [],
+          approver_ids: [],
+          approvers_json: "[]",
           count: 0,
         },
       };
