@@ -7,9 +7,15 @@
 import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
 
 // Load .env file
-const env = await load({ export: true, allowEmptyValues: true, defaultsPath: null, examplePath: null });
+const env = await load({
+  export: true,
+  allowEmptyValues: true,
+  defaultsPath: null,
+  examplePath: null,
+});
 
-const ADMIN_TOKEN = Deno.env.get("SLACK_ADMIN_USER_TOKEN") || env["SLACK_ADMIN_USER_TOKEN"];
+const ADMIN_TOKEN = Deno.env.get("SLACK_ADMIN_USER_TOKEN") ||
+  env["SLACK_ADMIN_USER_TOKEN"];
 
 if (!ADMIN_TOKEN) {
   console.error("SLACK_ADMIN_USER_TOKEN is not set in .env");

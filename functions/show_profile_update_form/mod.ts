@@ -437,7 +437,12 @@ async function checkUserPermissions(
 ): Promise<{ isAdminOrOwner: boolean; error?: string }> {
   console.log("[checkUserPermissions] Calling users.info with userId:", userId);
   const response = await client.users.info({ user: userId });
-  console.log("[checkUserPermissions] Response ok:", response.ok, "error:", response.error);
+  console.log(
+    "[checkUserPermissions] Response ok:",
+    response.ok,
+    "error:",
+    response.error,
+  );
   if (!response.ok) {
     return { isAdminOrOwner: false, error: response.error };
   }
@@ -516,7 +521,10 @@ async function fetchApprovers(
       params.append("cursor", cursor);
     }
 
-    console.log("[fetchApprovers] Calling admin.users.list with cursor:", cursor);
+    console.log(
+      "[fetchApprovers] Calling admin.users.list with cursor:",
+      cursor,
+    );
     const response = await fetch(
       `https://slack.com/api/admin.users.list?${params.toString()}`,
       {
@@ -530,7 +538,14 @@ async function fetchApprovers(
 
     const result: AdminUsersListResponse = await response.json();
 
-    console.log("[fetchApprovers] Response ok:", result.ok, "error:", result.error, "users count:", result.users?.length);
+    console.log(
+      "[fetchApprovers] Response ok:",
+      result.ok,
+      "error:",
+      result.error,
+      "users count:",
+      result.users?.length,
+    );
 
     if (!result.ok) {
       const errorCode = result.error ?? "unknown_error";
@@ -543,7 +558,10 @@ async function fetchApprovers(
 
     if (result.users) {
       for (const user of result.users) {
-        if (user.is_bot || user.deleted || user.is_restricted || user.is_ultra_restricted) continue;
+        if (
+          user.is_bot || user.deleted || user.is_restricted ||
+          user.is_ultra_restricted
+        ) continue;
         if (excludeUserId && user.id === excludeUserId) continue;
         if (user.is_admin || user.is_owner || user.is_primary_owner) {
           // 既に追加済みのユーザーはスキップ
@@ -657,7 +675,12 @@ export default SlackFunction(
     const { interactivity, user_id, channel_id: _channel_id } = inputs;
 
     console.log(t("logs.starting"));
-    console.log("[Main] user_id:", user_id, "trigger_id:", interactivity.interactivity_pointer);
+    console.log(
+      "[Main] user_id:",
+      user_id,
+      "trigger_id:",
+      interactivity.interactivity_pointer,
+    );
 
     try {
       // 1. Show loading modal immediately
@@ -666,7 +689,12 @@ export default SlackFunction(
         trigger_id: interactivity.interactivity_pointer,
         view: buildLoadingView(),
       });
-      console.log("[views.open] Response ok:", loadingResult.ok, "error:", loadingResult.error);
+      console.log(
+        "[views.open] Response ok:",
+        loadingResult.ok,
+        "error:",
+        loadingResult.error,
+      );
 
       if (!loadingResult.ok) {
         console.error(
@@ -695,19 +723,29 @@ export default SlackFunction(
       const authResponse = await client.auth.test();
       if (!authResponse.ok || !authResponse.team_id) {
         return {
-          error: t("errors.api_call_failed", { error: authResponse.error ?? "no_team_id" }),
+          error: t("errors.api_call_failed", {
+            error: authResponse.error ?? "no_team_id",
+          }),
           outputs: { success: false },
         };
       }
       const teamId = authResponse.team_id as string;
 
       // 2. Fetch user permissions and approvers in parallel
-      console.log("[Promise.all] Starting parallel fetch for user_id:", user_id);
+      console.log(
+        "[Promise.all] Starting parallel fetch for user_id:",
+        user_id,
+      );
       const [permResult, approversResult] = await Promise.all([
         checkUserPermissions(client, user_id),
         fetchApprovers(adminToken, teamId, user_id),
       ]);
-      console.log("[Promise.all] Completed. permResult.error:", permResult.error, "approversResult.error:", approversResult.error);
+      console.log(
+        "[Promise.all] Completed. permResult.error:",
+        permResult.error,
+        "approversResult.error:",
+        approversResult.error,
+      );
 
       if (permResult.error) {
         return {

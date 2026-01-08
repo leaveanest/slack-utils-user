@@ -160,7 +160,12 @@ Deno.test("GetAuthorizedApprovers - ボットと削除済みユーザーを除�
         mockAdminUsersList([
           { id: "U001", username: "admin_user", is_admin: true },
           { id: "B001", username: "bot_admin", is_admin: true, is_bot: true },
-          { id: "U002", username: "deleted_admin", is_admin: true, deleted: true },
+          {
+            id: "U002",
+            username: "deleted_admin",
+            is_admin: true,
+            deleted: true,
+          },
         ]),
       ),
     );

@@ -168,7 +168,10 @@ async function getApproversWithAdminApi(
       params.append("cursor", cursor);
     }
 
-    console.log("[GetAuthorizedApprovers] Calling admin.users.list with cursor:", cursor);
+    console.log(
+      "[GetAuthorizedApprovers] Calling admin.users.list with cursor:",
+      cursor,
+    );
 
     const response = await fetch(
       `https://slack.com/api/admin.users.list?${params.toString()}`,
@@ -183,7 +186,14 @@ async function getApproversWithAdminApi(
 
     const result: AdminUsersListResponse = await response.json();
 
-    console.log("[GetAuthorizedApprovers] Response ok:", result.ok, "error:", result.error, "users count:", result.users?.length);
+    console.log(
+      "[GetAuthorizedApprovers] Response ok:",
+      result.ok,
+      "error:",
+      result.error,
+      "users count:",
+      result.users?.length,
+    );
 
     if (!result.ok) {
       throw new Error(
