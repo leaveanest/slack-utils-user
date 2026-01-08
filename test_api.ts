@@ -4,7 +4,7 @@
  * Test Slack API users.list endpoint
  */
 
-import { load } from "https://deno.land/std@0.224.0/dotenv/mod.ts";
+import { load } from "std/dotenv/mod.ts";
 
 // Load .env file
 const env = await load({
