@@ -449,6 +449,14 @@ async function checkUserPermissions(
 }
 
 /**
+ * Result of fetching approvers
+ */
+interface FetchApproversResult {
+  approvers: Array<{ id: string; name: string; real_name?: string }>;
+  error?: string;
+}
+
+/**
  * Fetch authorized approvers
  */
 async function fetchApprovers(
@@ -472,13 +480,20 @@ async function fetchApprovers(
     };
   },
   excludeUserId?: string,
-): Promise<Array<{ id: string; name: string; real_name?: string }>> {
+): Promise<FetchApproversResult> {
   const approvers: Array<{ id: string; name: string; real_name?: string }> = [];
   let cursor: string | undefined;
 
   do {
     const response = await client.users.list({ cursor, limit: 200 });
-    if (!response.ok) break;
+    if (!response.ok) {
+      const errorCode = response.error ?? "unknown_error";
+      console.error(t("errors.api_call_failed", { error: errorCode }));
+      return {
+        approvers: [],
+        error: t("errors.api_call_failed", { error: errorCode }),
+      };
+    }
 
     if (response.members) {
       for (const member of response.members) {
@@ -497,7 +512,7 @@ async function fetchApprovers(
     cursor = response.response_metadata?.next_cursor;
   } while (cursor);
 
-  return approvers;
+  return { approvers };
 }
 
 /**
@@ -518,6 +533,60 @@ async function updateProfile(
   });
   const result = await response.json();
   return { ok: result.ok === true, error: result.error };
+}
+
+// deno-lint-ignore no-explicit-any
+type SlackClient = any;
+
+/**
+ * Send a direct message to a user
+ *
+ * Opens a DM channel first using conversations.open, then sends the message.
+ * This is required because chat.postMessage expects a channel ID, not a user ID.
+ *
+ * @param client - Slack API client
+ * @param userId - Target user ID to send DM to
+ * @param text - Message text
+ * @param blocks - Optional message blocks
+ * @returns Result of the postMessage call
+ */
+async function sendDirectMessage(
+  client: SlackClient,
+  userId: string,
+  text: string,
+  blocks?: unknown[],
+): Promise<{ ok: boolean; error?: string }> {
+  // Open DM channel with the user
+  const openResult = await client.conversations.open({ users: userId });
+  if (!openResult.ok) {
+    console.error(
+      t("errors.api_call_failed", { error: openResult.error ?? "unknown" }),
+    );
+    return { ok: false, error: openResult.error };
+  }
+
+  const dmChannelId = openResult.channel?.id;
+  if (!dmChannelId) {
+    console.error(t("errors.api_call_failed", { error: "no_channel_id" }));
+    return { ok: false, error: "no_channel_id" };
+  }
+
+  // Send message to the DM channel
+  const messageParams: { channel: string; text: string; blocks?: unknown[] } = {
+    channel: dmChannelId,
+    text,
+  };
+  if (blocks) {
+    messageParams.blocks = blocks;
+  }
+
+  const postResult = await client.chat.postMessage(messageParams);
+  if (!postResult.ok) {
+    console.error(
+      t("errors.api_call_failed", { error: postResult.error ?? "unknown" }),
+    );
+  }
+  return { ok: postResult.ok, error: postResult.error };
 }
 
 /**
@@ -552,7 +621,7 @@ export default SlackFunction(
       const viewId = loadingResult.view?.id;
 
       // 2. Fetch user permissions and approvers in parallel
-      const [permResult, approvers] = await Promise.all([
+      const [permResult, approversResult] = await Promise.all([
         checkUserPermissions(client, user_id),
         fetchApprovers(client, user_id),
       ]);
@@ -564,6 +633,14 @@ export default SlackFunction(
         };
       }
 
+      if (approversResult.error) {
+        return {
+          error: approversResult.error,
+          outputs: { success: false },
+        };
+      }
+
+      const approvers = approversResult.approvers;
       console.log(
         t("logs.authorized_users_fetched", { count: approvers.length }),
       );
@@ -679,13 +756,14 @@ export default SlackFunction(
           };
         }
 
-        // Send success notification
-        await client.chat.postMessage({
-          channel: operatorId,
-          text: t("messages.profile_updated_for_user", {
+        // Send success notification via DM
+        await sendDirectMessage(
+          client,
+          operatorId,
+          t("messages.profile_updated_for_user", {
             userId: targetUserId,
           }),
-        });
+        );
 
         // Complete the function
         await client.functions.completeSuccess({
@@ -731,11 +809,12 @@ export default SlackFunction(
           text: t("messages.approval_request_header"),
         });
 
-        // Notify requester
-        await client.chat.postMessage({
-          channel: operatorId,
-          text: t("messages.approval_request_sent"),
-        });
+        // Notify requester via DM
+        await sendDirectMessage(
+          client,
+          operatorId,
+          t("messages.approval_request_sent"),
+        );
 
         // Complete the function
         await client.functions.completeSuccess({
@@ -841,17 +920,18 @@ export default SlackFunction(
         text: approvedText,
       });
 
-      // Notify requester
-      await client.chat.postMessage({
-        channel: requester_id,
-        text: t("messages.update_success_notification", {
+      // Notify requester via DM
+      await sendDirectMessage(
+        client,
+        requester_id,
+        t("messages.update_success_notification", {
           target: target_user_id,
           updater: reviewerId,
           changes: Object.entries(changes).map(([k, v]) => `• ${k}: ${v}`).join(
             "\n",
           ),
         }),
-      });
+      );
     },
   )
   // Handle denial action
@@ -919,10 +999,7 @@ export default SlackFunction(
         text: deniedText,
       });
 
-      // Notify requester
-      await client.chat.postMessage({
-        channel: requester_id,
-        text: deniedText,
-      });
+      // Notify requester via DM
+      await sendDirectMessage(client, requester_id, deniedText);
     },
   );
