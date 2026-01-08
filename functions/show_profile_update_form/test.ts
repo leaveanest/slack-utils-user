@@ -80,6 +80,26 @@ function mockUsersList(
   };
 }
 
+/**
+ * Mock users.list API error response
+ */
+function mockUsersListError(error: string) {
+  return {
+    ok: false,
+    error,
+  };
+}
+
+/**
+ * Mock users.info API error response
+ */
+function mockUsersInfoError(error: string) {
+  return {
+    ok: false,
+    error,
+  };
+}
+
 Deno.test("ShowProfileUpdateForm - 関数定義が正しく設定されている", () => {
   assertEquals(
     ShowProfileUpdateFormDefinition.definition.callback_id,
@@ -278,6 +298,112 @@ Deno.test("ShowProfileUpdateForm - views.update失敗時にエラーを返す", 
 
   const result = await handler(context);
 
+  assertEquals(result.outputs?.success, false);
+  assertEquals(typeof result.error, "string");
+
+  mf.reset();
+});
+
+Deno.test("ShowProfileUpdateForm - users.list失敗時にエラーを返す", async () => {
+  mf.mock("POST@/api/views.open", () => {
+    return new Response(JSON.stringify(mockViewsOpen(true, "V12345")));
+  });
+
+  mf.mock("POST@/api/users.info", () => {
+    return new Response(JSON.stringify(mockUsersInfo({ id: "U001" })));
+  });
+
+  // users.list fails
+  mf.mock("POST@/api/users.list", () => {
+    return new Response(JSON.stringify(mockUsersListError("users_list_error")));
+  });
+
+  const context = createContext({
+    inputs: {
+      interactivity: {
+        interactivity_pointer: "trigger_12345",
+        interactor: { id: "U001", secret: "secret" },
+      },
+      user_id: "U001",
+      channel_id: "C001",
+    },
+  });
+
+  const result = await handler(context);
+
+  // Should return error when users.list fails
+  assertEquals(result.outputs?.success, false);
+  assertEquals(typeof result.error, "string");
+
+  mf.reset();
+});
+
+Deno.test("ShowProfileUpdateForm - users.listレート制限時にエラーを返す", async () => {
+  mf.mock("POST@/api/views.open", () => {
+    return new Response(JSON.stringify(mockViewsOpen(true, "V12345")));
+  });
+
+  mf.mock("POST@/api/users.info", () => {
+    return new Response(JSON.stringify(mockUsersInfo({ id: "U001" })));
+  });
+
+  // users.list rate limited
+  mf.mock("POST@/api/users.list", () => {
+    return new Response(JSON.stringify(mockUsersListError("ratelimited")));
+  });
+
+  const context = createContext({
+    inputs: {
+      interactivity: {
+        interactivity_pointer: "trigger_12345",
+        interactor: { id: "U001", secret: "secret" },
+      },
+      user_id: "U001",
+      channel_id: "C001",
+    },
+  });
+
+  const result = await handler(context);
+
+  // Should return error when rate limited
+  assertEquals(result.outputs?.success, false);
+  assertEquals(typeof result.error, "string");
+
+  mf.reset();
+});
+
+Deno.test("ShowProfileUpdateForm - users.info失敗時にエラーを返す", async () => {
+  mf.mock("POST@/api/views.open", () => {
+    return new Response(JSON.stringify(mockViewsOpen(true, "V12345")));
+  });
+
+  // users.info fails
+  mf.mock("POST@/api/users.info", () => {
+    return new Response(JSON.stringify(mockUsersInfoError("user_not_found")));
+  });
+
+  mf.mock("POST@/api/users.list", () => {
+    return new Response(
+      JSON.stringify(
+        mockUsersList([{ id: "UADMIN", name: "admin", is_admin: true }]),
+      ),
+    );
+  });
+
+  const context = createContext({
+    inputs: {
+      interactivity: {
+        interactivity_pointer: "trigger_12345",
+        interactor: { id: "U001", secret: "secret" },
+      },
+      user_id: "U001",
+      channel_id: "C001",
+    },
+  });
+
+  const result = await handler(context);
+
+  // Should return error when users.info fails
   assertEquals(result.outputs?.success, false);
   assertEquals(typeof result.error, "string");
 
