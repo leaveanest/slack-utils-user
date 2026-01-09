@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/leaveanest/slack-utils-user/compare/v1.2.0...v1.2.1) (2026-01-09)
+
+
+### Bug Fixes
+
+* admin.users.list APIを使用するように変更 ([af88cb4](https://github.com/leaveanest/slack-utils-user/commit/af88cb4c7145618bf99545dc4795130ecbf23e12))
+* test_api.tsのimportをimport_mapに準拠 ([4f227df](https://github.com/leaveanest/slack-utils-user/commit/4f227df361ff4127920e612b7cf4be93bde91280))
+
 ## [1.2.0](https://github.com/leaveanest/slack-utils-user/compare/v1.1.0...v1.2.0) (2026-01-08)
 
 ### Features
