@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/leaveanest/slack-utils-user/compare/v1.3.0...v1.4.0) (2026-01-09)
+
+
+### Features
+
+* implement UpdateCustomFields and ShowCustomFieldsForm functions ([8078279](https://github.com/leaveanest/slack-utils-user/commit/8078279120877a3b1b9f9b32aa984edfc20230c8))
+
 ## [1.3.0](https://github.com/leaveanest/slack-utils-user/compare/v1.2.1...v1.3.0) (2026-01-09)
 
 
