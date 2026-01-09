@@ -8,7 +8,7 @@
  */
 
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import { t } from "../../lib/i18n/mod.ts";
+import { initI18n, t } from "../../lib/i18n/mod.ts";
 import {
   DEFAULT_PERMISSION_CONFIG,
   type PermissionConfig,
@@ -124,6 +124,9 @@ function getPermissionConfig(): PermissionConfig {
 export default SlackFunction(
   CheckUserPermissionsDefinition,
   async ({ inputs, client }) => {
+    // Initialize i18n system
+    await initI18n();
+
     const { operator_id, target_user_id, requested_fields } = inputs;
 
     console.log(t("logs.checking_permissions", { userId: operator_id }));

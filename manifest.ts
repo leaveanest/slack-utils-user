@@ -10,9 +10,9 @@ import { GetAuthorizedApproversDefinition } from "./functions/get_authorized_app
 // import { UpdateCustomFieldsDefinition } from "./functions/update_custom_fields/mod.ts";
 // import { GetCustomFieldDefinitionsDefinition } from "./functions/get_custom_field_definitions/mod.ts";
 
-// TODO: Import workflow definitions when implemented
-// import UpdateProfileWorkflow from "./workflows/update_profile_workflow.ts";
-// import UpdateCustomFieldsWorkflow from "./workflows/update_custom_fields_workflow.ts";
+// Import workflow definitions
+import UpdateProfileWorkflow from "./workflows/update_profile_workflow.ts";
+import UpdateCustomFieldsWorkflow from "./workflows/update_custom_fields_workflow.ts";
 
 // Load from environment variables with fallback defaults
 const APP_NAME = Deno.env.get("SLACK_APP_NAME") || "Slack Utils User";
@@ -23,8 +23,10 @@ export default Manifest({
   name: APP_NAME,
   description: APP_DESCRIPTION,
   icon: "assets/icon.png",
-  // TODO: Add workflows when implemented
-  workflows: [],
+  workflows: [
+    UpdateProfileWorkflow,
+    UpdateCustomFieldsWorkflow,
+  ],
   functions: [
     UpdateUserProfileDefinition,
     CheckUserPermissionsDefinition,
@@ -38,6 +40,7 @@ export default Manifest({
     "chat:write.public", // 公開チャンネルへの送信
     "users:read", // ユーザー情報読み取り
     "users.profile:read", // プロフィール読み取り
+    "team:read", // チーム情報読み取り（カスタムフィールド定義取得に必要）
     "im:write", // DM送信
   ],
 });

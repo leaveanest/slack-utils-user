@@ -81,6 +81,42 @@ function mockUsersList(
 }
 
 /**
+ * Mock admin.users.list API response
+ */
+function mockAdminUsersList(
+  users: Array<{
+    id: string;
+    username: string;
+    full_name?: string;
+    is_admin?: boolean;
+    is_owner?: boolean;
+  }>,
+) {
+  return {
+    ok: true,
+    users: users.map((u) => ({
+      ...u,
+      is_bot: false,
+      deleted: false,
+      is_restricted: false,
+      is_ultra_restricted: false,
+    })),
+    response_metadata: { next_cursor: "" },
+  };
+}
+
+/**
+ * Mock auth.test API response
+ */
+function mockAuthTest(teamId: string = "T001") {
+  return {
+    ok: true,
+    team_id: teamId,
+    user_id: "U_BOT",
+  };
+}
+
+/**
  * Mock users.list API error response
  */
 function mockUsersListError(error: string) {
@@ -117,17 +153,22 @@ Deno.test("ShowProfileUpdateForm - ローディングモーダルを表示して
     return new Response(JSON.stringify(mockViewsOpen(true, "V12345")));
   });
 
+  // Mock auth.test
+  mf.mock("POST@/api/auth.test", () => {
+    return new Response(JSON.stringify(mockAuthTest("T001")));
+  });
+
   // Mock users.info for permission check
   mf.mock("POST@/api/users.info", () => {
     return new Response(JSON.stringify(mockUsersInfo({ id: "U001" })));
   });
 
-  // Mock users.list for approvers
-  mf.mock("POST@/api/users.list", () => {
+  // Mock admin.users.list for approvers
+  mf.mock("GET@/api/admin.users.list", () => {
     return new Response(
       JSON.stringify(
-        mockUsersList([
-          { id: "UADMIN", name: "admin", is_admin: true },
+        mockAdminUsersList([
+          { id: "UADMIN", username: "admin", is_admin: true },
         ]),
       ),
     );
@@ -147,12 +188,14 @@ Deno.test("ShowProfileUpdateForm - ローディングモーダルを表示して
       user_id: "U001",
       channel_id: "C001",
     },
+    env: { SLACK_ADMIN_USER_TOKEN: "xoxp-test-token" },
   });
 
   const result = await handler(context);
 
   // Should return completed: false to wait for form submission
   assertEquals(result.completed, false);
+  assertEquals(result.error, undefined);
 
   mf.reset();
 });
@@ -186,17 +229,23 @@ Deno.test("ShowProfileUpdateForm - Adminユーザーでもフォーム表示が�
     return new Response(JSON.stringify(mockViewsOpen(true, "V12345")));
   });
 
+  // Mock auth.test
+  mf.mock("POST@/api/auth.test", () => {
+    return new Response(JSON.stringify(mockAuthTest("T001")));
+  });
+
   mf.mock("POST@/api/users.info", () => {
     return new Response(
       JSON.stringify(mockUsersInfo({ id: "U001", is_admin: true })),
     );
   });
 
-  mf.mock("POST@/api/users.list", () => {
+  // Mock admin.users.list
+  mf.mock("GET@/api/admin.users.list", () => {
     return new Response(
       JSON.stringify(
-        mockUsersList([
-          { id: "UADMIN2", name: "admin2", is_admin: true },
+        mockAdminUsersList([
+          { id: "UADMIN2", username: "admin2", is_admin: true },
         ]),
       ),
     );
@@ -215,12 +264,14 @@ Deno.test("ShowProfileUpdateForm - Adminユーザーでもフォーム表示が�
       user_id: "U001",
       channel_id: "C001",
     },
+    env: { SLACK_ADMIN_USER_TOKEN: "xoxp-test-token" },
   });
 
   const result = await handler(context);
 
   // Should return completed: false to wait for form submission
   assertEquals(result.completed, false);
+  assertEquals(result.error, undefined);
 
   mf.reset();
 });
@@ -230,16 +281,22 @@ Deno.test("ShowProfileUpdateForm - 一般ユーザーでもフォーム表示が
     return new Response(JSON.stringify(mockViewsOpen(true, "V12345")));
   });
 
+  // Mock auth.test
+  mf.mock("POST@/api/auth.test", () => {
+    return new Response(JSON.stringify(mockAuthTest("T001")));
+  });
+
   mf.mock("POST@/api/users.info", () => {
     return new Response(JSON.stringify(mockUsersInfo({ id: "U001" })));
   });
 
-  mf.mock("POST@/api/users.list", () => {
+  // Mock admin.users.list
+  mf.mock("GET@/api/admin.users.list", () => {
     return new Response(
       JSON.stringify(
-        mockUsersList([
-          { id: "UADMIN", name: "admin", is_admin: true },
-          { id: "UOWNER", name: "owner", is_owner: true },
+        mockAdminUsersList([
+          { id: "UADMIN", username: "admin", is_admin: true },
+          { id: "UOWNER", username: "owner", is_owner: true },
         ]),
       ),
     );
@@ -258,12 +315,14 @@ Deno.test("ShowProfileUpdateForm - 一般ユーザーでもフォーム表示が
       user_id: "U001",
       channel_id: "C001",
     },
+    env: { SLACK_ADMIN_USER_TOKEN: "xoxp-test-token" },
   });
 
   const result = await handler(context);
 
   // Should return completed: false to wait for form submission
   assertEquals(result.completed, false);
+  assertEquals(result.error, undefined);
 
   mf.reset();
 });

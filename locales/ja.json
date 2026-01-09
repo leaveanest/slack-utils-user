@@ -12,6 +12,7 @@
     "admin_only_field": "フィールド '{field}' は管理者のみが更新できます",
     "missing_admin_token": "管理者ユーザートークン (SLACK_ADMIN_USER_TOKEN) が設定されていません",
     "missing_approval_channel": "承認チャンネルIDが設定されていません",
+    "missing_team_id": "ワークスペースのチームIDの取得に失敗しました",
     "not_authorized_approver": "このリクエストを承認する権限がありません。<@{approver}> のみが承認または却下できます。",
     "not_authorized_approver_multiple": "このリクエストを承認する権限がありません。{approvers} のみが承認または却下できます。",
     "no_approver_selected": "少なくとも1人の承認者を選択してください",
@@ -111,6 +112,7 @@
     "custom_fields_fetched": "{count} 個のカスタムフィールドを取得しました",
     "fetching_authorized_users": "認可された承認者を取得中...",
     "authorized_users_fetched": "{count} 人の認可された承認者が見つかりました",
+    "max_page_limit_reached": "ユーザー取得中に最大ページ数 {limit} に達しました",
     "modal_opened": "モーダルが開かれました",
     "form_submitted": "フォームが送信されました"
   },

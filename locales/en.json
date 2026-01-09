@@ -12,6 +12,7 @@
     "admin_only_field": "Field '{field}' can only be updated by administrators",
     "missing_admin_token": "Admin user token (SLACK_ADMIN_USER_TOKEN) is not configured",
     "missing_approval_channel": "Approval channel ID is not configured",
+    "missing_team_id": "Failed to retrieve workspace team ID",
     "not_authorized_approver": "You are not authorized to approve this request. Only <@{approver}> can approve or deny.",
     "not_authorized_approver_multiple": "You are not authorized to approve this request. Only {approvers} can approve or deny.",
     "no_approver_selected": "Please select at least one approver",
@@ -111,6 +112,7 @@
     "custom_fields_fetched": "Fetched {count} custom fields",
     "fetching_authorized_users": "Fetching authorized approvers...",
     "authorized_users_fetched": "Found {count} authorized approvers",
+    "max_page_limit_reached": "Maximum page limit of {limit} reached while fetching users",
     "modal_opened": "Modal opened",
     "form_submitted": "Form submitted"
   },

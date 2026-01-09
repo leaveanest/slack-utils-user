@@ -9,7 +9,7 @@
  */
 
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
-import { t } from "../../lib/i18n/mod.ts";
+import { initI18n, t } from "../../lib/i18n/mod.ts";
 
 /**
  * Function definition for UpdateUserProfile
@@ -158,6 +158,9 @@ async function updateProfileWithUserToken(
 export default SlackFunction(
   UpdateUserProfileDefinition,
   async ({ inputs, env }) => {
+    // Initialize i18n system
+    await initI18n();
+
     const { target_user_id, display_name, title, phone, pronouns } = inputs;
 
     console.log(t("logs.updating_profile", { userId: target_user_id }));
