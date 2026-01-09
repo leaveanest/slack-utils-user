@@ -5,10 +5,9 @@ import { UpdateUserProfileDefinition } from "./functions/update_user_profile/mod
 import { CheckUserPermissionsDefinition } from "./functions/check_user_permissions/mod.ts";
 import { ShowProfileUpdateFormDefinition } from "./functions/show_profile_update_form/mod.ts";
 import { GetAuthorizedApproversDefinition } from "./functions/get_authorized_approvers/mod.ts";
-
-// TODO: Import additional function definitions when implemented
-// import { UpdateCustomFieldsDefinition } from "./functions/update_custom_fields/mod.ts";
-// import { GetCustomFieldDefinitionsDefinition } from "./functions/get_custom_field_definitions/mod.ts";
+import { GetCustomFieldDefinitionsDefinition } from "./functions/get_custom_field_definitions/mod.ts";
+import { UpdateCustomFieldsDefinition } from "./functions/update_custom_fields/mod.ts";
+import { ShowCustomFieldsFormDefinition } from "./functions/show_custom_fields_form/mod.ts";
 
 // Import workflow definitions
 import UpdateProfileWorkflow from "./workflows/update_profile_workflow.ts";
@@ -32,6 +31,9 @@ export default Manifest({
     CheckUserPermissionsDefinition,
     ShowProfileUpdateFormDefinition,
     GetAuthorizedApproversDefinition,
+    GetCustomFieldDefinitionsDefinition,
+    UpdateCustomFieldsDefinition,
+    ShowCustomFieldsFormDefinition,
   ],
   outgoingDomains: [],
   botScopes: [

@@ -27,6 +27,8 @@
     "invalid_type": "無効な型: {expected} が期待されましたが、{actual} が取得されました",
     "empty_value": "値を空にすることはできません",
     "invalid_format": "{field} の形式が無効です: {pattern} が期待されています",
+    "invalid_json_format": "無効なJSON形式です",
+    "user_not_selected": "対象ユーザーを選択してください",
     "validation": {
       "channel_id_empty": "チャンネルIDを空にすることはできません",
       "channel_id_format": "チャンネルIDは 'C' で始まり、その後に大文字の英数字が続く必要があります",
@@ -61,7 +63,8 @@
     "field_change": "• {field}: {old} → {new}",
     "loading_form": "⏳ フォームを読み込み中...",
     "processing": "処理中...",
-    "success": "操作が正常に完了しました"
+    "success": "操作が正常に完了しました",
+    "close_button": "閉じる"
   },
   "form": {
     "title": "プロフィールを更新",
@@ -117,6 +120,8 @@
     "processing_approval": "承認を処理中: action={action}, reviewer={reviewer}",
     "fetching_custom_fields": "カスタムフィールド定義を取得中...",
     "custom_fields_fetched": "{count} 個のカスタムフィールドを取得しました",
+    "updating_custom_fields": "カスタムフィールドを更新中...",
+    "custom_fields_updated": "カスタムフィールドが正常に更新されました",
     "fetching_authorized_users": "承認権限のあるユーザーを取得中...",
     "authorized_users_fetched": "{count} 人の承認権限のあるユーザーが見つかりました",
     "max_page_limit_reached": "ユーザー取得時に最大ページ制限 {limit} に達しました",
