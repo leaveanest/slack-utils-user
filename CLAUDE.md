@@ -211,6 +211,47 @@ Deno.test("チャンネルIDが無効な場合はエラーを返す", async () =
 
 参考: `functions/example_function/test.ts`
 
+#### 4. テストでのi18n使用
+
+**重要**: エラーメッセージの検証には、ハードコードされた文字列ではなく `t()` 関数を使用してください。
+
+これにより、翻訳が変更されてもテストが自動的に対応します。
+
+```typescript
+import { t } from "../../lib/i18n/mod.ts";
+
+// ✅ 良い例: t()関数を使用
+Deno.test("エラーメッセージが正しく表示される", () => {
+  const result = schema.safeParse("invalid");
+  assertEquals(result.success, false);
+  if (!result.success) {
+    assertEquals(
+      result.error.errors[0].message,
+      t("errors.validation.channel_id_format"),  // i18nから動的に取得
+    );
+  }
+});
+
+// ❌ 悪い例: ハードコードされた文字列
+Deno.test("エラーメッセージが正しく表示される", () => {
+  const result = schema.safeParse("invalid");
+  assertEquals(result.success, false);
+  if (!result.success) {
+    assertEquals(
+      result.error.errors[0].message,
+      "Channel ID must start with 'C'...",  // 翻訳変更時にテストが壊れる
+    );
+  }
+});
+```
+
+**理由:**
+- 翻訳ファイル（`locales/*.json`）の変更に自動対応
+- テストと実装の一貫性を保証
+- 多言語対応テストが簡潔になる
+
+参考: `lib/validation/test.ts`
+
 ## 🌍 I18n（多言語対応）ルール
 
 **重要**:
