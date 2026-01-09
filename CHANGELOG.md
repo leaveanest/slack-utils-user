@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/leaveanest/slack-utils-user/compare/v1.4.0...v1.4.1) (2026-01-09)
+
+
+### Bug Fixes
+
+* update validation test to match ja.json translation ([efb2262](https://github.com/leaveanest/slack-utils-user/commit/efb226241c83176a584f1131a46ec73d521a9fcd))
+
 ## [1.4.0](https://github.com/leaveanest/slack-utils-user/compare/v1.3.0...v1.4.0) (2026-01-09)
 
 
