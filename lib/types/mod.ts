@@ -5,3 +5,4 @@
  */
 
 export * from "./profile.ts";
+export * from "./custom_fields.ts";
