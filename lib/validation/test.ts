@@ -5,6 +5,7 @@ import {
   loadLocale,
   setLocale,
   SUPPORTED_LOCALES,
+  t,
 } from "../i18n/mod.ts";
 import {
   channelIdSchema,
@@ -106,7 +107,7 @@ Deno.test({
     if (!result.success) {
       assertEquals(
         result.error.errors[0].message,
-        "Channel ID must start with 'C' followed by uppercase alphanumeric characters",
+        t("errors.validation.channel_id_format"),
       );
     }
     setLocale(originalLocale); // 元に戻す
@@ -124,10 +125,10 @@ Deno.test({
 
     assertEquals(result.success, false);
     if (!result.success) {
-      // 日本語のエラーメッセージを確認（部分一致）
+      // 日本語のエラーメッセージを確認（i18nから取得）
       assertEquals(
-        result.error.errors[0].message.includes("チャンネルID"),
-        true,
+        result.error.errors[0].message,
+        t("errors.validation.channel_id_format"),
       );
     }
     setLocale(originalLocale); // 元に戻す
@@ -147,7 +148,7 @@ Deno.test({
     if (!result.success) {
       assertEquals(
         result.error.errors[0].message,
-        "User ID must start with 'U' or 'W' followed by uppercase alphanumeric characters",
+        t("errors.validation.user_id_format"),
       );
     }
     setLocale(originalLocale); // 元に戻す
@@ -165,10 +166,10 @@ Deno.test({
 
     assertEquals(result.success, false);
     if (!result.success) {
-      // 日本語のエラーメッセージを確認（部分一致）
+      // 日本語のエラーメッセージを確認（i18nから取得）
       assertEquals(
-        result.error.errors[0].message.includes("ユーザーID"),
-        true,
+        result.error.errors[0].message,
+        t("errors.validation.user_id_empty"),
       );
     }
     setLocale(originalLocale); // 元に戻す
@@ -188,7 +189,7 @@ Deno.test({
     if (!result.success) {
       assertEquals(
         result.error.errors[0].message,
-        "Value cannot be empty",
+        t("errors.validation.value_empty"),
       );
     }
     setLocale(originalLocale); // 元に戻す
@@ -206,10 +207,10 @@ Deno.test({
 
     assertEquals(result.success, false);
     if (!result.success) {
-      // 日本語のエラーメッセージを確認（部分一致）
+      // 日本語のエラーメッセージを確認（i18nから取得）
       assertEquals(
-        result.error.errors[0].message.includes("空"),
-        true,
+        result.error.errors[0].message,
+        t("errors.validation.value_empty"),
       );
     }
     setLocale(originalLocale); // 元に戻す
@@ -228,7 +229,7 @@ Deno.test({
     if (!result1.success) {
       assertEquals(
         result1.error.errors[0].message,
-        "Channel ID must start with 'C' followed by uppercase alphanumeric characters",
+        t("errors.validation.channel_id_format"),
       );
     }
 
@@ -237,10 +238,10 @@ Deno.test({
     const result2 = channelIdSchema.safeParse("invalid");
     assertEquals(result2.success, false);
     if (!result2.success) {
-      // 日本語のエラーメッセージが表示される
+      // 日本語のエラーメッセージが表示される（i18nから取得）
       assertEquals(
-        result2.error.errors[0].message.includes("チャンネルID"),
-        true,
+        result2.error.errors[0].message,
+        t("errors.validation.channel_id_format"),
       );
     }
 
@@ -252,7 +253,7 @@ Deno.test({
       // 再び英語のエラーメッセージが表示される
       assertEquals(
         result3.error.errors[0].message,
-        "Channel ID must start with 'C' followed by uppercase alphanumeric characters",
+        t("errors.validation.channel_id_format"),
       );
     }
 
