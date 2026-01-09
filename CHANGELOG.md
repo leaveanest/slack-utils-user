@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/leaveanest/slack-utils-user/compare/v1.2.1...v1.3.0) (2026-01-09)
+
+
+### Features
+
+* implement GetCustomFieldDefinitions function ([b5bfd75](https://github.com/leaveanest/slack-utils-user/commit/b5bfd754a194dfd0cc1b2e179099803f7569811c))
+
 ## [1.2.1](https://github.com/leaveanest/slack-utils-user/compare/v1.2.0...v1.2.1) (2026-01-09)
 
 
