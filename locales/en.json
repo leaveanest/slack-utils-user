@@ -27,6 +27,8 @@
     "invalid_type": "Invalid type: expected {expected}, got {actual}",
     "empty_value": "Value cannot be empty",
     "invalid_format": "Invalid format for {field}: expected {pattern}",
+    "invalid_json_format": "Invalid JSON format",
+    "user_not_selected": "Please select a target user",
     "validation": {
       "channel_id_empty": "Channel ID cannot be empty",
       "channel_id_format": "Channel ID must start with 'C' followed by uppercase alphanumeric characters",
@@ -61,7 +63,8 @@
     "field_change": "• {field}: {old} → {new}",
     "loading_form": "⏳ Loading form...",
     "processing": "Processing...",
-    "success": "Operation completed successfully"
+    "success": "Operation completed successfully",
+    "close_button": "Close"
   },
   "form": {
     "title": "Update Profile",
@@ -117,6 +120,8 @@
     "processing_approval": "Processing approval: action={action}, reviewer={reviewer}",
     "fetching_custom_fields": "Fetching custom field definitions...",
     "custom_fields_fetched": "Fetched {count} custom fields",
+    "updating_custom_fields": "Updating custom fields...",
+    "custom_fields_updated": "Custom fields updated successfully",
     "fetching_authorized_users": "Fetching authorized approvers...",
     "authorized_users_fetched": "Found {count} authorized approvers",
     "max_page_limit_reached": "Maximum page limit of {limit} reached while fetching users",
