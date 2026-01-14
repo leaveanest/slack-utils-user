@@ -22,3 +22,6 @@ docs/review-presentation.md
 .auto-claude/
 .auto-claude-*
 Auto-Claude/
+
+# Git worktrees (local development)
+.worktrees/
