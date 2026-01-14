@@ -126,7 +126,8 @@
     "authorized_users_fetched": "Found {count} authorized approvers",
     "max_page_limit_reached": "Maximum page limit of {limit} reached while fetching users",
     "modal_opened": "Modal opened",
-    "form_submitted": "Form submitted"
+    "form_submitted": "Form submitted",
+    "modal_closed": "Modal closed"
   },
   "validation": {
     "display_name_too_long": "Display name must be 80 characters or less",

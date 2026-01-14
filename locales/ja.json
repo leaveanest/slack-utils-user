@@ -126,7 +126,8 @@
     "authorized_users_fetched": "{count}人の承認可能なユーザーが見つかりました",
     "max_page_limit_reached": "ユーザーを取得中に最大ページ制限{limit}に達しました",
     "modal_opened": "モーダルが開かれました",
-    "form_submitted": "フォームが送信されました"
+    "form_submitted": "フォームが送信されました",
+    "modal_closed": "モーダルが閉じられました"
   },
   "validation": {
     "display_name_too_long": "表示名は80文字以下である必要があります",
