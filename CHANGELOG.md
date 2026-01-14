@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0](https://github.com/leaveanest/slack-utils-user/compare/v1.4.1...v1.5.0) (2026-01-14)
+
+
+### Features
+
+* **workflow:** connect UpdateCustomFieldsWorkflow to ShowCustomFieldsForm ([ad6ef27](https://github.com/leaveanest/slack-utils-user/commit/ad6ef27ca1916e6decfd322a5958f2933c7f0a03))
+
+
+### Bug Fixes
+
+* change output_parameters to JSON string for manifest validation ([eb7a259](https://github.com/leaveanest/slack-utils-user/commit/eb7a2595ce8aab41c536c147d075bdd7f0ff4a98))
+* complete workflow function after modal submission/close ([bc4afc1](https://github.com/leaveanest/slack-utils-user/commit/bc4afc1062700dd6ebe1024bc2ae61c15c1494cc))
+
 ## [1.4.1](https://github.com/leaveanest/slack-utils-user/compare/v1.4.0...v1.4.1) (2026-01-09)
 
 
