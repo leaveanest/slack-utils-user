@@ -239,6 +239,31 @@ export default SlackFunction(
 
       console.log(t("logs.custom_fields_fetched", { count: fields.length }));
 
+      // 2. Fetch target user's current profile values
+      console.log(t("logs.fetching_user_profile", { userId: inputs.user_id }));
+      const userProfileResponse = await client.users.profile.get({
+        user: inputs.user_id,
+      });
+
+      // Extract current custom field values (field_id -> value mapping)
+      const currentValues: Record<string, string> = {};
+      if (userProfileResponse.ok && userProfileResponse.profile?.fields) {
+        const profileFields = userProfileResponse.profile.fields as Record<
+          string,
+          { value?: string }
+        >;
+        for (const [fieldId, fieldData] of Object.entries(profileFields)) {
+          if (fieldData.value) {
+            currentValues[fieldId] = fieldData.value;
+          }
+        }
+        console.log(
+          t("logs.user_profile_fetched", {
+            count: Object.keys(currentValues).length,
+          }),
+        );
+      }
+
       if (fields.length === 0) {
         // Show message when no fields are available
         await client.views.open({
@@ -289,10 +314,13 @@ export default SlackFunction(
         },
       ];
 
-      // Add input element for each field
+      // Add input element for each field with current values
       for (const field of fields) {
         blocks.push(
-          createFieldInput(field as unknown as CustomFieldDefinitionDetail),
+          createFieldInput(
+            field as unknown as CustomFieldDefinitionDetail,
+            currentValues[field.id],
+          ),
         );
       }
 

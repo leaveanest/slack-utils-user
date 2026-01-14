@@ -127,7 +127,9 @@
     "max_page_limit_reached": "Maximum page limit of {limit} reached while fetching users",
     "modal_opened": "Modal opened",
     "form_submitted": "Form submitted",
-    "modal_closed": "Modal closed"
+    "modal_closed": "Modal closed",
+    "fetching_user_profile": "Fetching target user profile... User: {userId}",
+    "user_profile_fetched": "Profile fetched: {count} custom fields"
   },
   "validation": {
     "display_name_too_long": "Display name must be 80 characters or less",

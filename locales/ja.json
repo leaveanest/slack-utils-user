@@ -127,7 +127,9 @@
     "max_page_limit_reached": "ユーザー取得時に {limit} のページ制限に達しました",
     "modal_opened": "モーダルが開かれました",
     "form_submitted": "フォームが送信されました",
-    "modal_closed": "モーダルが閉じられました"
+    "modal_closed": "モーダルが閉じられました",
+    "fetching_user_profile": "対象ユーザーのプロフィールを取得しています... ユーザー: {userId}",
+    "user_profile_fetched": "プロフィールを取得しました: {count}件のカスタムフィールド"
   },
   "validation": {
     "display_name_too_long": "表示名は80文字以下である必要があります",
