@@ -1,13 +1,32 @@
-# slack-utils-template
+# slack-utils-user
 
-{description}
+Slack
+ユーザープロフィールとカスタムフィールドを管理するワークフローアプリケーションです。
+
+[![CI](https://github.com/leaveanest/slack-utils-user/actions/workflows/ci.yml/badge.svg)](https://github.com/leaveanest/slack-utils-user/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## 概要
 
-- slack-utils シリーズの共通テンプレートです。
-- {Category} をはじめとした {category} ワークフローを素早く構築できます。
-- Slack Deno SDK v2.0.0
-  を利用し、関数・ワークフロー・トリガーを一貫して管理します。
+- Slack ユーザープロフィール（表示名、役職、電話番号など）の更新機能
+- カスタムフィールド（部門、入社日、従業員番号など）の更新機能
+- 管理者承認ワークフローによる安全な他ユーザープロフィール更新
+- Slack Deno SDK v2.x を利用し、関数・ワークフロー・トリガーを一貫して管理
+
+## 機能一覧
+
+### プロフィール更新ワークフロー
+
+- **自分のプロフィール更新**: 一般ユーザーが自分の許可されたフィールドを更新
+- **他ユーザープロフィール更新**: 管理者承認後に他ユーザーのプロフィールを更新
+- **管理者直接更新**: Admin/Owner は承認なしで任意のユーザーを更新可能
+
+### カスタムフィールド更新ワークフロー
+
+- **カスタムフィールドフォーム表示**:
+  ワークスペースに設定されたカスタムフィールドを動的に表示
+- **現在値の自動取得**: モーダルを開くと現在の値が初期表示される
+- **複数フィールドタイプ対応**: テキスト、日付、選択リストに対応
 
 ## 前提条件
 
@@ -16,145 +35,133 @@
 - **Slack App** を作成できる権限を持っていること
 - **Git** がインストールされていること（Git Hooks使用時）
 
-詳細は [開発環境のセットアップ](#開発環境のセットアップ) を参照してください。
-
 ## セットアップ
 
 ```bash
 # リポジトリを取得
-git clone https://github.com/your-org/slack-utils-template.git
-cd slack-utils-template
+git clone https://github.com/leaveanest/slack-utils-user.git
+cd slack-utils-user
 
 # 環境変数の設定
 cp .env.example .env
-# .env ファイルを編集して、アプリ名やカテゴリをカスタマイズ
+# .env ファイルを編集
 
-# 依存設定と初期化
+# Slack CLIでログイン
 slack login
-slack env add local
 
 # Git hooks をセットアップ（推奨）
-# macOS/Linux: bash scripts/setup-git-hooks.sh
-# Windows: Git Bash または WSL で実行
+bash scripts/setup-git-hooks.sh
 ```
 
 ### 環境変数の設定
 
-`.env` ファイルで以下の変数をカスタマイズできます：
+`.env` ファイルで以下の変数を設定してください：
 
 ```bash
-# Slack App Configuration
-SLACK_APP_NAME=Slack Utils Template        # アプリ名
-SLACK_APP_DESCRIPTION=A template...         # アプリの説明
-SLACK_CATEGORY=Channel                      # カテゴリ名（例: Team, Project など）
+# 必須: 他ユーザープロフィール更新用のAdmin User Token
+# Slack API Apps で取得（users.profile:write スコープが必要）
+SLACK_ADMIN_USER_TOKEN=xoxp-xxxxxxxxxxxx-xxxxxxxxxxxx-xxxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# オプション: 承認リクエスト送信先チャンネル
+SLACK_APPROVAL_CHANNEL_ID=C0123456789
+
+# オプション: ロケール設定（デフォルト: ja）
+LOCALE=ja
 ```
 
-これらの変数は、ワークフロー、ファンクション、トリガーの名前や説明に自動的に反映されます。
+### Admin User Token の取得方法
 
-### slack.json 設定
-
-`slack.json` には以下の設定が含まれています：
-
-#### 環境変数の管理
-
-```json
-"environments": {
-  "local": {
-    "env_file": ".env"
-  }
-}
-```
-
-- **`environments.local`**: `slack run`実行時に`.env`ファイルを自動読み込み
-- 環境変数（API キーなど）を`.env`で管理できます
-
-#### 本番デプロイ設定（オプション）
-
-本番環境へデプロイする場合は、`deployments`セクションを追加してください：
-
-```json
-"deployments": {
-  "production": {
-    "workspace": "your-workspace-name",
-    "token_alias": "production"
-  }
-}
-```
-
-その後、`slack deploy --env production`でデプロイできます。
-
-#### 補足
-
-- **`.slack/`フォルダー**: Slack CLI が自動生成・管理（手動編集不要）
-- **`import_map.json`**: 依存関係の解決に使用
-- **Git hooks**: セットアップすると commit/push 前に自動チェック実行
+1. [Slack API Apps](https://api.slack.com/apps) で従来型 App を作成
+2. 「OAuth & Permissions」→「User Token Scopes」に `users.profile:write` を追加
+3. 「Install to Workspace」でワークスペースにインストール
+4. 「User OAuth Token」（`xoxp-` で始まる）をコピー
+5. `.env` の `SLACK_ADMIN_USER_TOKEN` に設定
 
 ## 使い方
 
+### ローカル開発
+
 ```bash
-# フォーマット・Lint・テスト
+# アプリを起動
+slack run
+
+# トリガーを作成
+slack trigger create --trigger-def triggers/update_profile_shortcut.ts
+slack trigger create --trigger-def triggers/update_custom_fields_shortcut.ts
+```
+
+### Slack からの使用
+
+1. Slack で任意のチャンネルを開く
+2. メッセージ入力欄の「+」ボタンをクリック
+3. 「ショートカット」または「ワークフロー」を選択
+4. 「プロフィールを更新」または「カスタムフィールドを更新」を選択
+
+## 開発
+
+### コマンド一覧
+
+```bash
+# フォーマット
 deno task fmt
+
+# リント
 deno task lint
+
+# 型チェック
 deno task check
+
+# テスト
 deno task test
 
 # カバレッジ付きテスト
 deno test --allow-all --coverage=cov
 deno coverage cov --html
 
-# ローカル実行
-slack run workflows/example_workflow
+# i18n 整合性チェック
+deno task i18n:check
+
+# 全チェック（CI相当）
+deno task cursor-ci
 ```
 
-- `functions/example_function/mod.ts` が {category}
-  チャンネル情報を取得するサンプルです。
-- `workflows/example_workflow.ts` は上記関数を利用して {Category} を分析します。
-- `triggers/example_trigger.ts` を Slack CLI
-  で登録し、ショートカットからワークフローを呼び出せます。
-
-## テスト
-
-### テストの実行
+### テスト
 
 ```bash
 # 全テストを実行
 deno task test
 
-# カバレッジを測定
-deno test --allow-all --coverage=cov
-deno coverage cov --html  # HTML形式で確認
+# 特定の関数のテスト
+deno test --allow-all functions/show_custom_fields_form/test.ts
 ```
 
-### 新規関数作成時の要件
+## プロジェクト構成
 
-新しい関数を作成する際は、以下を必ず実施してください：
-
-1. **JSDocコメント**: 関数の説明、パラメータ、戻り値、エラーを記載
-2. **テストファイル**: 正常系と異常系のテストを作成
-3. **テストカバレッジ**: 主要な処理パスをカバー
-
-詳細は [`docs/testing-guide.md`](docs/testing-guide.md) を参照してください。
-
-### テストの例
-
-```typescript
-/**
- * Slackチャンネルの情報を取得します
- *
- * @param client - Slack APIクライアント
- * @param channelId - 取得対象のチャンネルID
- * @returns チャンネルの概要情報
- * @throws {Error} チャンネル情報の取得に失敗した場合
- */
-export async function retrieveChannelSummary(
-  client: SlackAPIClient,
-  channelId: string,
-): Promise<ChannelSummary> {
-  // 実装
-}
 ```
-
-参考実装: [`functions/example_function/`](functions/example_function/)
+slack-utils-user/
+├── functions/              # Slack Functions
+│   ├── check_user_permissions/    # 権限チェック
+│   ├── get_authorized_approvers/  # 承認者取得
+│   ├── get_custom_field_definitions/ # カスタムフィールド定義取得
+│   ├── show_custom_fields_form/   # カスタムフィールドフォーム表示
+│   ├── show_profile_update_form/  # プロフィール更新フォーム表示
+│   ├── update_custom_fields/      # カスタムフィールド更新
+│   └── update_user_profile/       # ユーザープロフィール更新
+├── workflows/              # Slack Workflows
+│   ├── update_custom_fields_workflow.ts
+│   └── update_profile_workflow.ts
+├── triggers/               # Slack Triggers
+├── lib/                    # 共通ライブラリ
+│   ├── i18n/              # 多言語対応
+│   ├── types/             # 型定義
+│   └── validation/        # Zodスキーマ
+├── locales/               # 翻訳ファイル
+│   ├── en.json            # 英語
+│   └── ja.json            # 日本語
+├── docs/                  # ドキュメント
+├── .github/               # CI/CD
+└── manifest.ts            # Slackアプリマニフェスト
+```
 
 ## 多言語対応（I18n）
 
@@ -162,465 +169,49 @@ export async function retrieveChannelSummary(
 
 ### サポート言語
 
+- **日本語 (ja)** - デフォルト言語
 - **English (en)** - ベース言語
-- **日本語 (ja)** - 自動翻訳
 
 ### 言語の切り替え
 
-環境変数で言語を指定できます：
-
 ```bash
-# 英語で実行（デフォルト）
-export LOCALE=en
-deno run your_script.ts
-
-# 日本語で実行
+# 日本語で実行（デフォルト）
 export LOCALE=ja
-deno run your_script.ts
-```
+slack run
 
-### コード内での使用
-
-```typescript
-import { t } from "../../lib/i18n/mod.ts";
-
-// シンプルなメッセージ
-const message = t("errors.unknown_error");
-
-// プレースホルダー付きメッセージ
-const error = t("errors.channel_not_found", { error: "not_found" });
+# 英語で実行
+export LOCALE=en
+slack run
 ```
 
 ### 自動翻訳
 
-`locales/en.json` が更新されると、GitHub
-Actionsが自動的に日本語への翻訳を実行し、PRを作成します。
+`locales/en.json` が更新されると、GitHub Actions
+が自動的に日本語への翻訳を実行し、PR を作成します。
 
 詳細は [`docs/i18n-guide.md`](docs/i18n-guide.md) を参照してください。
 
-## 例外処理
+## 関連プロジェクト
 
-このプロジェクトでは、統一的な例外処理パターンを採用しています。
+- [slack-utils-channel](https://github.com/leaveanest/slack-utils-channel) -
+  チャンネル管理ワークフロー
 
-### 基本ルール
+## コントリビューション
 
-1. **API通信**: 必ず`response.ok`をチェック
-2. **バリデーション**: 入力値の型チェック・空文字チェック必須
-3. **エラーメッセージ**: 必ず`t()`関数で多言語化
-4. **Slack関数**: try-catchで全体をラップ
-
-### コード例
-
-```typescript
-import { t } from "../../lib/i18n/mod.ts";
-
-// API通信の例外処理
-const response = await client.conversations.info({ channel: channelId });
-if (!response.ok) {
-  throw new Error(t("errors.api_call_failed", { error: response.error }));
-}
-
-// バリデーション
-if (typeof input !== "string") {
-  throw new Error(t("errors.invalid_type", {
-    expected: "string",
-    actual: typeof input,
-  }));
-}
-
-// Slack関数
-export default SlackFunction(MyFunction, async ({ inputs, client }) => {
-  try {
-    // 処理
-    return { outputs: { result } };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Function error:", message);
-    return { error: message };
-  }
-});
-```
-
-詳細は [`docs/exception-handling-guide.md`](docs/exception-handling-guide.md)
+コントリビューションを歓迎します！詳細は [CONTRIBUTING.md](CONTRIBUTING.md)
 を参照してください。
-
-## バリデーション（Zod）
-
-このプロジェクトでは、型安全なバリデーションのために**Zod**を使用しています。
-
-### 利用可能なスキーマ
-
-`lib/validation/schemas.ts` に以下の共通スキーマが定義されています：
-
-- **`channelIdSchema`**: Slackチャンネル ID（`C12345678` 形式）
-- **`userIdSchema`**: Slackユーザー ID（`U0812GLUZD2` または `W1234567890`
-  形式）
-- **`nonEmptyStringSchema`**: 空でない文字列
-
-### 使用例
-
-```typescript
-import { channelIdSchema } from "../../lib/validation/schemas.ts";
-
-// パース（エラー時は例外をthrow）
-const channelId = channelIdSchema.parse(inputs.channel_id);
-
-// 安全なパース（エラー時は結果オブジェクトを返す）
-const result = channelIdSchema.safeParse(inputs.channel_id);
-if (!result.success) {
-  console.error(result.error);
-}
-```
-
-### エラーメッセージの多言語化
-
-Zodのバリデーションエラーメッセージは**動的に多言語化**されます。
-`.superRefine()`を使用しているため、バリデーション実行時に現在のロケールに応じたエラーメッセージが表示されます：
-
-```typescript
-import { channelIdSchema } from "../../lib/validation/schemas.ts";
-import { setLocale } from "../../lib/i18n/mod.ts";
-
-// 英語でバリデーション実行
-setLocale("en");
-const result1 = channelIdSchema.safeParse("invalid");
-// エラー: "Channel ID must start with 'C' followed by uppercase alphanumeric characters"
-
-// 同じスキーマインスタンスで日本語に切り替え
-setLocale("ja");
-const result2 = channelIdSchema.safeParse("invalid");
-// エラー: "チャンネルIDは'C'で始まり、その後に大文字の英数字が続く必要があります"
-
-// 英語に戻す
-setLocale("en");
-const result3 = channelIdSchema.safeParse("invalid");
-// エラー: "Channel ID must start with 'C' followed by uppercase alphanumeric characters"
-```
-
-**ポイント：**
-
-- デフォルトスキーマ（`channelIdSchema`等）もロケール変更に**動的に対応**します
-- スキーマを再作成する必要はありません
-- 環境変数 `LOCALE` または `LANG` でデフォルトロケールを設定できます
-
-詳細は [`CONTRIBUTING.md`](CONTRIBUTING.md)
-の「バリデーション（Zod）」セクションを参照してください。
-
-## 開発環境のセットアップ
-
-### Deno のインストール
-
-#### macOS / Linux
-
-```bash
-# インストールスクリプトを使用
-curl -fsSL https://deno.land/install.sh | sh
-
-# Homebrewを使用（macOS）
-brew install deno
-```
-
-#### Windows
-
-```powershell
-# PowerShellでインストール
-irm https://deno.land/install.ps1 | iex
-
-# Chocolateyを使用
-choco install deno
-
-# Scoopを使用
-scoop install deno
-```
-
-#### 動作確認
-
-```bash
-deno --version
-```
-
-### Slack CLI のインストール
-
-#### macOS / Linux
-
-```bash
-curl -fsSL https://downloads.slack-edge.com/slack-cli/install.sh | bash
-slack login
-```
-
-#### Windows
-
-**方法1: インストーラーを使用（推奨）**
-
-1. [Slack CLI リリースページ](https://api.slack.com/automation/cli/install)
-   から最新のインストーラーをダウンロード
-2. ダウンロードした `.msi` ファイルを実行
-3. PowerShellまたはコマンドプロンプトで `slack login` を実行
-
-**方法2: WSL (Windows Subsystem for Linux) を使用**
-
-```bash
-# WSL内で実行
-curl -fsSL https://downloads.slack-edge.com/slack-cli/install.sh | bash
-slack login
-```
-
-#### 動作確認
-
-```bash
-slack version
-slack login
-```
-
-### Git のインストール
-
-#### macOS
-
-```bash
-# Xcodeコマンドラインツールと一緒にインストール
-xcode-select --install
-
-# Homebrewを使用
-brew install git
-```
-
-#### Linux
-
-```bash
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install git
-
-# CentOS/RHEL
-sudo yum install git
-
-# Fedora
-sudo dnf install git
-```
-
-#### Windows
-
-1. [Git for Windows](https://git-scm.com/download/win)
-   から公式インストーラーをダウンロード
-2. インストール時に「Git Bash」を含めることを推奨（スクリプト実行に必要）
-3. インストール完了後、Git Bashまたは PowerShellで動作確認
-
-```bash
-git --version
-```
-
-### 推奨エディタ
-
-- **[Visual Studio Code](https://code.visualstudio.com/)** -
-  公式Deno拡張機能が利用可能
-- **[Cursor](https://cursor.sh/)** - AI統合エディタ（このプロジェクトでは
-  `.cursor/rules/` でルールを設定済み）
-
-#### Deno拡張機能の設定（VSCode/Cursor）
-
-このプロジェクトには `.vscode/`
-ディレクトリが用意されており、以下の設定が自動的に適用されます：
-
-**含まれる設定ファイル：**
-
-- `settings.json` - Deno LSP、エディタ、フォーマッター設定
-- `extensions.json` - 推奨拡張機能のリスト
-- `tasks.json` - Denoタスクのショートカット
-- `launch.json` - デバッグ設定（Slack Function、テスト、翻訳スクリプト等）
-
-**推奨拡張機能（自動でインストール推奨されます）：**
-
-- `denoland.vscode-deno` - Deno公式拡張（必須）
-- `github.copilot` - AI支援コーディング
-- `eamodio.gitlens` - Git履歴可視化
-- `usernamehw.errorlens` - エラー行内表示
-
-初回起動時に「推奨拡張機能をインストールしますか？」と表示されたら、「すべてインストール」を選択してください。
-
-**デバッグ機能：**
-
-`F5` キーまたは「実行とデバッグ」パネルから、以下のデバッグ設定を使用できます：
-
-- **Debug Slack Function** - Slack関数のデバッグ
-- **Debug Deno Tests** - 全テストのデバッグ
-- **Debug Current File** - 現在開いているファイルのデバッグ
-- **Debug i18n Tests** - i18nテストのデバッグ
-- **Debug Translation Script** - 翻訳スクリプトのデバッグ
-
-## GitHub Secrets の設定
-
-GitHub Actionsを使用するため、以下のシークレットを設定してください：
-
-```
-Settings → Secrets and variables → Actions
-```
-
-必須のシークレット：
-
-- `SLACK_WEBHOOK` - Slack通知用のIncoming Webhook URL
-
-オプションのシークレット：
-
-- `CODECOV_TOKEN` - コードカバレッジレポート用（プライベートリポジトリの場合）
-- `ANTHROPIC_API_KEY` - i18n自動翻訳用（Claude Haiku 4.5を使用）
-- `NPM_TOKEN` - npm公開用（npmパッケージとして公開する場合）
-- `JSR_TOKEN` - JSR公開用（JSRパッケージとして公開する場合）
-
-## デプロイ手順
-
-### ローカル開発
-
-```bash
-# ローカルで実行（開発環境）
-slack run workflows/example_workflow
-
-# .envファイルは自動的に読み込まれます
-```
-
-### 本番環境へのデプロイ
-
-本番環境へデプロイする場合は、以下の手順を実行してください：
-
-```bash
-# 1. slack.jsonにdeploymentsセクションを追加
-# slack.jsonに以下を追加：
-# "deployments": {
-#   "production": {
-#     "workspace": "your-workspace-name",
-#     "token_alias": "production"
-#   }
-# }
-
-# 2. テストと型チェックを完了させる
-deno task test
-deno task check
-
-# 3. Slack CLI でデプロイ
-slack deploy --env production
-
-# 4. トリガーを有効化
-slack triggers create --trigger-file triggers/example_trigger.ts
-```
-
-**注意:**
-
-- `deployments`セクションはデフォルトでは含まれていません（開発専用テンプレートのため）
-- 本番デプロイ時に必要に応じて追加してください
-- 詳細は「slack.json 設定」セクションを参照
-
-## プロジェクト構成
-
-```
-slack-utils-template/
-├── functions/         # Slack Functions（各関数にtest.tsを配置）
-├── workflows/         # Slack Workflows
-├── triggers/          # Slack Triggers
-├── docs/              # ドキュメント（テストガイド等）
-├── assets/            # アイコンなどの静的アセット
-├── .github/           # CI/CD と Issue テンプレート
-├── .cursor/           # Cursor AI エディタのルール設定
-├── .gitattributes     # 改行コード統一設定 (LF)
-└── deno.jsonc         # Deno設定（CHANGELOG.md除外含む）
-```
-
-## 開発時の注意事項
-
-### 改行コード
-
-- **全ファイルでLF（Unix形式）に統一されています**
-- `.gitattributes` で自動的に設定されます
-- Windows環境では Git が自動変換するため、特別な設定は不要です
-
-### エディタ設定
-
-- **Cursor AI**: `.cursor/rules/push_rules.mdc`
-  でpush前チェックが自動実行されます
-- **Deno**: `deno.jsonc` で設定を管理（フォーマッター、リンターなど）
-- **VSCode/Cursor**: Deno拡張機能を有効化してください
-
-### 自動生成ファイル
-
-- **CHANGELOG.md**: release-please/semantic-release
-  が自動生成するため、フォーマットチェックから除外されています
-- 手動で編集しないでください（自動更新されます）
-
-### OS固有の注意点
-
-#### Windows
-
-- **Git Bash の使用**: スクリプト実行時は Git Bash または WSL を使用
-- **改行コード**: `.gitattributes` が自動的にLFに変換します
-- **パス区切り**: スラッシュ（`/`）を使用（バックスラッシュ不要）
-
-#### macOS
-
-- **Xcode Command Line Tools**: Gitインストールに必要
-- **Homebrew**: 各種ツールのインストールに推奨
-
-#### Linux
-
-- **権限**: スクリプト実行時に `chmod +x` が必要な場合があります
-- **パッケージマネージャー**: ディストリビューションに応じて選択
-
-## Git Hooks による品質チェック（推奨）
-
-Git hooksを設定すると、commit/push時に自動的に品質チェックが実行されます。
-
-### セットアップ
-
-#### macOS / Linux
-
-```bash
-bash scripts/setup-git-hooks.sh
-```
-
-#### Windows
-
-**PowerShellを使用:**
-
-```powershell
-# Git Bashがインストールされている場合
-bash scripts/setup-git-hooks.sh
-
-# または、WSL内で実行
-wsl bash scripts/setup-git-hooks.sh
-```
-
-**Git Bashを使用:**
-
-```bash
-bash scripts/setup-git-hooks.sh
-```
-
-### 自動実行される内容
-
-**pre-commit（コミット前）:**
-
-- ✅ フォーマットチェック
-- ✅ リントチェック
-
-**pre-push（プッシュ前）:**
-
-- ✅ フォーマットチェック
-- ✅ リントチェック
-- ✅ テスト実行
-
-### メリット
-
-- CI/CDのエラーを事前に防止
-- ローカルで即座にフィードバック
-- 品質の自動保証
-
-### 緊急時のスキップ（非推奨）
-
-```bash
-git commit --no-verify  # pre-commitをスキップ
-git push --no-verify    # pre-pushをスキップ
-```
-
-詳細は `docs/git-hooks-setup.md` を参照してください。
 
 ## ライセンス
 
-本テンプレートは MIT ライセンスで提供されています。詳細は `LICENSE`
+本プロジェクトは MIT ライセンスで提供されています。詳細は [LICENSE](LICENSE)
 を参照してください。
+
+## セキュリティ
+
+セキュリティに関する問題を発見した場合は、[SECURITY.md](SECURITY.md)
+を参照してください。
+
+## 行動規範
+
+このプロジェクトは [Contributor Covenant](CODE_OF_CONDUCT.md)
+行動規範を採用しています。
