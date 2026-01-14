@@ -342,7 +342,7 @@ export default SlackFunction(
   // Modal submission handler
   .addViewSubmissionHandler(
     ["custom_fields_form_modal"],
-    async ({ view, client, env }) => {
+    async ({ view, client, env, body }) => {
       await initI18n();
 
       const metadata = JSON.parse(view.private_metadata || "{}");
@@ -444,6 +444,31 @@ export default SlackFunction(
         text: t("messages.custom_fields_updated"),
       });
 
+      // Complete the function to allow workflow to finish
+      await client.functions.completeSuccess({
+        function_execution_id: body.function_data.execution_id,
+        outputs: {
+          success: true,
+          updated_user_id: targetUserId,
+        },
+      });
+
       return { response_action: "clear" };
+    },
+  )
+  // Handle modal close without submission
+  .addViewClosedHandler(
+    ["custom_fields_form_modal"],
+    async ({ body, client }) => {
+      await initI18n();
+      console.log(t("logs.modal_closed"));
+
+      // Complete the function with cancelled status
+      await client.functions.completeSuccess({
+        function_execution_id: body.function_data.execution_id,
+        outputs: {
+          success: false,
+        },
+      });
     },
   );

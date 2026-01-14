@@ -12,6 +12,8 @@ import { initI18n } from "../../lib/i18n/mod.ts";
 import type {
   CustomFieldDefinitionDetail,
   CustomFieldSection,
+  OutputCustomField,
+  OutputCustomFieldSection,
 } from "../../lib/types/custom_fields.ts";
 
 // Initialize i18n before tests
@@ -82,6 +84,22 @@ function mockApiError(errorCode: string) {
   };
 }
 
+/**
+ * Parse fields_json output to array
+ */
+function parseFieldsJson(json: string | undefined): OutputCustomField[] {
+  return json ? JSON.parse(json) : [];
+}
+
+/**
+ * Parse sections_json output to array
+ */
+function parseSectionsJson(
+  json: string | undefined,
+): OutputCustomFieldSection[] {
+  return json ? JSON.parse(json) : [];
+}
+
 Deno.test("GetCustomFieldDefinitions - 関数定義が正しく設定されている", () => {
   assertEquals(
     GetCustomFieldDefinitionsDefinition.definition.callback_id,
@@ -123,19 +141,21 @@ Deno.test("GetCustomFieldDefinitions - 正常にフィールド定義を取得�
   });
 
   const result = await handler(context);
+  const fields = parseFieldsJson(result.outputs?.fields_json);
+  const sections = parseSectionsJson(result.outputs?.sections_json);
 
   assertEquals(result.outputs?.success, true);
   assertEquals(result.outputs?.field_count, 2);
-  assertEquals(result.outputs?.fields?.length, 2);
-  assertEquals(result.outputs?.sections?.length, 1);
+  assertEquals(fields.length, 2);
+  assertEquals(sections.length, 1);
 
-  const field1 = result.outputs?.fields?.[0];
+  const field1 = fields[0];
   assertEquals(field1?.id, "Xf001");
   assertEquals(field1?.label, "部署");
   assertEquals(field1?.type, "options_list");
   assertEquals(field1?.possible_values, ["営業部", "開発部"]);
 
-  const section1 = result.outputs?.sections?.[0];
+  const section1 = sections[0];
   assertEquals(section1?.id, "S001");
   assertEquals(section1?.label, "会社情報");
 
@@ -154,11 +174,13 @@ Deno.test("GetCustomFieldDefinitions - フィールドがない場合は空配�
   });
 
   const result = await handler(context);
+  const fields = parseFieldsJson(result.outputs?.fields_json);
+  const sections = parseSectionsJson(result.outputs?.sections_json);
 
   assertEquals(result.outputs?.success, true);
   assertEquals(result.outputs?.field_count, 0);
-  assertEquals(result.outputs?.fields?.length, 0);
-  assertEquals(result.outputs?.sections?.length, 0);
+  assertEquals(fields.length, 0);
+  assertEquals(sections.length, 0);
 
   mf.reset();
 });
@@ -206,10 +228,11 @@ Deno.test("GetCustomFieldDefinitions - 非表示フィールドをフィルタ�
   });
 
   const result = await handler(context);
+  const fields = parseFieldsJson(result.outputs?.fields_json);
 
   assertEquals(result.outputs?.success, true);
   assertEquals(result.outputs?.field_count, 1);
-  assertEquals(result.outputs?.fields?.[0]?.id, "Xf001");
+  assertEquals(fields[0]?.id, "Xf001");
 
   mf.reset();
 });
@@ -268,10 +291,11 @@ Deno.test("GetCustomFieldDefinitions - 保護フィールドのフラグが正�
   });
 
   const result = await handler(context);
+  const fields = parseFieldsJson(result.outputs?.fields_json);
 
   assertEquals(result.outputs?.success, true);
-  assertEquals(result.outputs?.fields?.[0]?.is_protected, false);
-  assertEquals(result.outputs?.fields?.[1]?.is_protected, true);
+  assertEquals(fields[0]?.is_protected, false);
+  assertEquals(fields[1]?.is_protected, true);
 
   mf.reset();
 });
@@ -307,14 +331,15 @@ Deno.test("GetCustomFieldDefinitions - 各フィールドタイプを正しく�
   });
 
   const result = await handler(context);
+  const fields = parseFieldsJson(result.outputs?.fields_json);
 
   assertEquals(result.outputs?.success, true);
   assertEquals(result.outputs?.field_count, 3);
 
-  assertEquals(result.outputs?.fields?.[0]?.type, "text");
-  assertEquals(result.outputs?.fields?.[1]?.type, "options_list");
-  assertEquals(result.outputs?.fields?.[1]?.possible_values?.length, 3);
-  assertEquals(result.outputs?.fields?.[2]?.type, "date");
+  assertEquals(fields[0]?.type, "text");
+  assertEquals(fields[1]?.type, "options_list");
+  assertEquals(fields[1]?.possible_values?.length, 3);
+  assertEquals(fields[2]?.type, "date");
 
   mf.reset();
 });
@@ -344,10 +369,11 @@ Deno.test("GetCustomFieldDefinitions - 非表示セクションをフィルタ�
   });
 
   const result = await handler(context);
+  const sections = parseSectionsJson(result.outputs?.sections_json);
 
   assertEquals(result.outputs?.success, true);
-  assertEquals(result.outputs?.sections?.length, 1);
-  assertEquals(result.outputs?.sections?.[0]?.id, "S001");
+  assertEquals(sections.length, 1);
+  assertEquals(sections[0]?.id, "S001");
 
   mf.reset();
 });
@@ -369,10 +395,11 @@ Deno.test("GetCustomFieldDefinitions - hintが空の場合は空文字列を返�
   });
 
   const result = await handler(context);
+  const fields = parseFieldsJson(result.outputs?.fields_json);
 
   assertEquals(result.outputs?.success, true);
-  assertEquals(result.outputs?.fields?.[0]?.hint, "");
-  assertEquals(result.outputs?.fields?.[1]?.hint, "ヒントあり");
+  assertEquals(fields[0]?.hint, "");
+  assertEquals(fields[1]?.hint, "ヒントあり");
 
   mf.reset();
 });
@@ -397,9 +424,10 @@ Deno.test("GetCustomFieldDefinitions - possible_valuesがnullの場合は空配�
   });
 
   const result = await handler(context);
+  const fields = parseFieldsJson(result.outputs?.fields_json);
 
   assertEquals(result.outputs?.success, true);
-  assertEquals(result.outputs?.fields?.[0]?.possible_values, []);
+  assertEquals(fields[0]?.possible_values, []);
 
   mf.reset();
 });
@@ -416,11 +444,13 @@ Deno.test("GetCustomFieldDefinitions - profileが存在しない場合は空配�
   });
 
   const result = await handler(context);
+  const fields = parseFieldsJson(result.outputs?.fields_json);
+  const sections = parseSectionsJson(result.outputs?.sections_json);
 
   assertEquals(result.outputs?.success, true);
   assertEquals(result.outputs?.field_count, 0);
-  assertEquals(result.outputs?.fields?.length, 0);
-  assertEquals(result.outputs?.sections?.length, 0);
+  assertEquals(fields.length, 0);
+  assertEquals(sections.length, 0);
 
   mf.reset();
 });

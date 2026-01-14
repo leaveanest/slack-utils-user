@@ -49,34 +49,14 @@ export const GetCustomFieldDefinitionsDefinition = DefineFunction({
         type: Schema.types.boolean,
         description: "取得成功かどうか",
       },
-      fields: {
-        type: Schema.types.array,
-        items: {
-          type: Schema.types.object,
-          properties: {
-            id: { type: Schema.types.string },
-            label: { type: Schema.types.string },
-            type: { type: Schema.types.string },
-            hint: { type: Schema.types.string },
-            possible_values: {
-              type: Schema.types.array,
-              items: { type: Schema.types.string },
-            },
-            is_protected: { type: Schema.types.boolean },
-          },
-        },
-        description: "カスタムフィールド定義の配列",
+      fields_json: {
+        type: Schema.types.string,
+        description:
+          "カスタムフィールド定義の配列（JSON文字列）。各要素: {id, label, type, hint, possible_values, is_protected}",
       },
-      sections: {
-        type: Schema.types.array,
-        items: {
-          type: Schema.types.object,
-          properties: {
-            id: { type: Schema.types.string },
-            label: { type: Schema.types.string },
-          },
-        },
-        description: "セクション定義の配列",
+      sections_json: {
+        type: Schema.types.string,
+        description: "セクション定義の配列（JSON文字列）。各要素: {id, label}",
       },
       field_count: {
         type: Schema.types.integer,
@@ -180,8 +160,8 @@ export default SlackFunction(
         return {
           outputs: {
             success: true,
-            fields: [],
-            sections: [],
+            fields_json: "[]",
+            sections_json: "[]",
             field_count: 0,
           },
         };
@@ -212,8 +192,8 @@ export default SlackFunction(
       return {
         outputs: {
           success: true,
-          fields: outputFields,
-          sections: outputSections,
+          fields_json: JSON.stringify(outputFields),
+          sections_json: JSON.stringify(outputSections),
           field_count: outputFields.length,
         },
       };
@@ -224,8 +204,8 @@ export default SlackFunction(
       return {
         outputs: {
           success: false,
-          fields: [],
-          sections: [],
+          fields_json: "[]",
+          sections_json: "[]",
           field_count: 0,
           error: message,
         },

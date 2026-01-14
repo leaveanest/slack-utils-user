@@ -15,6 +15,7 @@
  */
 
 import { DefineWorkflow, Schema } from "deno-slack-sdk/mod.ts";
+import { ShowCustomFieldsFormDefinition } from "../functions/show_custom_fields_form/mod.ts";
 
 /**
  * カスタムフィールド更新ワークフロー
@@ -45,15 +46,14 @@ const UpdateCustomFieldsWorkflow = DefineWorkflow({
   },
 });
 
-// TODO: カスタムフィールド更新フォーム表示関数を実装後、以下のステップを追加
 // フォーム表示→権限チェック→実行/承認リクエストを1つの関数で処理
-// UpdateCustomFieldsWorkflow.addStep(
-//   ShowCustomFieldsUpdateFormDefinition,
-//   {
-//     interactivity: UpdateCustomFieldsWorkflow.inputs.interactivity,
-//     user_id: UpdateCustomFieldsWorkflow.inputs.user_id,
-//     channel_id: UpdateCustomFieldsWorkflow.inputs.channel_id,
-//   },
-// );
+UpdateCustomFieldsWorkflow.addStep(
+  ShowCustomFieldsFormDefinition,
+  {
+    interactivity: UpdateCustomFieldsWorkflow.inputs.interactivity,
+    user_id: UpdateCustomFieldsWorkflow.inputs.user_id,
+    channel_id: UpdateCustomFieldsWorkflow.inputs.channel_id,
+  },
+);
 
 export default UpdateCustomFieldsWorkflow;
