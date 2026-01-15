@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/leaveanest/slack-utils-user/compare/v1.5.0...v1.5.1) (2026-01-15)
+
+
+### Bug Fixes
+
+* 承認フロー修正とワークフロー実行チャンネルへの通知 ([09b8d65](https://github.com/leaveanest/slack-utils-user/commit/09b8d651efbb04d8d78a18520d1e73cee47fbdc7))
+
 ## [1.5.0](https://github.com/leaveanest/slack-utils-user/compare/v1.4.1...v1.5.0) (2026-01-14)
 
 
