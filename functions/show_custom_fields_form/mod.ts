@@ -17,6 +17,7 @@ import type { CustomFieldDefinitionDetail } from "../../lib/types/custom_fields.
 const FORM_CALLBACK_ID = "custom_fields_form_modal";
 const APPROVE_ACTION_ID = "approve_custom_fields_update";
 const DENY_ACTION_ID = "deny_custom_fields_update";
+const TARGET_USER_ACTION_ID = "target_user_select";
 
 /**
  * Slack client type definition
@@ -168,13 +169,16 @@ interface BlockElement {
  *
  * @param field - Custom field definition
  * @param currentValue - Optional current value for the field
+ * @param blockIdSuffix - Optional suffix for block_id to force Slack to use new initial values
  * @returns Block Kit input block
  */
 function createFieldInput(
   field: CustomFieldDefinitionDetail,
   currentValue?: string,
+  blockIdSuffix?: string,
 ): BlockElement {
-  const blockId = `field_${field.id}`;
+  // Use suffix to force Slack to treat as new field and apply initial values
+  const blockId = `field_${field.id}${blockIdSuffix ?? ""}`;
   const actionId = `input_${field.id}`;
 
   switch (field.type) {
@@ -752,9 +756,10 @@ export default SlackFunction(
         {
           type: "input",
           block_id: "target_user_block",
+          dispatch_action: true, // Enable BlockActionsHandler on selection change
           element: {
             type: "users_select",
-            action_id: "target_user_select",
+            action_id: TARGET_USER_ACTION_ID,
             initial_user: inputs.user_id,
           },
           label: {
@@ -777,11 +782,14 @@ export default SlackFunction(
       ];
 
       // Add input element for each field with current values
+      // Use target user ID as suffix to force Slack to use initial values on user change
+      const blockIdSuffix = `_${inputs.user_id}`;
       for (const field of fields) {
         blocks.push(
           createFieldInput(
             field as unknown as CustomFieldDefinitionDetail,
             currentValues[field.id],
+            blockIdSuffix,
           ),
         );
       }
@@ -840,7 +848,10 @@ export default SlackFunction(
             operator_id: inputs.user_id,
             is_admin_or_owner: isAdminOrOwner,
             approvers_available: approvers.length > 0,
+            approvers: approvers,
             field_labels: fieldLabels,
+            fields: fields, // Store field definitions for rebuilding on user change
+            target_user_id: inputs.user_id,
           }),
           title: {
             type: "plain_text",
@@ -915,10 +926,20 @@ export default SlackFunction(
         ) ?? [];
 
       // Collect field updates
+      // Block IDs have format: field_${fieldId}_${targetUserId}
       const fieldUpdates: Record<string, string> = {};
       for (const [blockId, blockValue] of Object.entries(values)) {
         if (blockId.startsWith("field_")) {
-          const fieldId = blockId.replace("field_", "");
+          // Extract field ID by removing "field_" prefix and "_U..." suffix
+          const withoutPrefix = blockId.replace("field_", "");
+          // Find the last underscore followed by user ID pattern (U or W followed by alphanumeric)
+          const suffixMatch = withoutPrefix.match(/_[UW][A-Z0-9]+$/);
+          const fieldId = suffixMatch
+            ? withoutPrefix.slice(
+              0,
+              withoutPrefix.length - suffixMatch[0].length,
+            )
+            : withoutPrefix;
           const actionId = `input_${fieldId}`;
           const element = (blockValue as Record<string, unknown>)[actionId] as {
             selected_option?: { value: string };
@@ -1312,6 +1333,198 @@ export default SlackFunction(
           updated_user_id: target_user_id,
         },
       });
+    },
+  )
+  // Handle target user selection change
+  .addBlockActionsHandler(
+    [TARGET_USER_ACTION_ID],
+    async ({ action, body, client }) => {
+      await initI18n();
+      console.log(
+        "[BlockActionsHandler] Target user selection changed:",
+        action.selected_user,
+      );
+
+      // Get selected user ID from the action
+      const selectedUserId = action.selected_user;
+      if (!selectedUserId) {
+        console.error("[BlockActionsHandler] No user selected");
+        return;
+      }
+
+      // Get metadata from the view
+      const view = body.view;
+      if (!view) {
+        console.error("[BlockActionsHandler] No view found in body");
+        return;
+      }
+
+      const metadata = JSON.parse(view.private_metadata ?? "{}");
+      const {
+        operator_id: operatorId,
+        is_admin_or_owner: isAdminOrOwner,
+        approvers,
+        approvers_available: approversAvailable,
+        channel_id: channelId,
+        field_labels: fieldLabels,
+        fields,
+      } = metadata;
+
+      // Fetch the selected user's profile to get current custom field values
+      console.log(t("logs.fetching_user_profile", { userId: selectedUserId }));
+      const userProfileResponse = await client.users.profile.get({
+        user: selectedUserId,
+      });
+
+      // Extract current custom field values
+      const currentValues: Record<string, string> = {};
+      if (userProfileResponse.ok && userProfileResponse.profile?.fields) {
+        const profileFields = userProfileResponse.profile.fields as Record<
+          string,
+          { value?: string }
+        >;
+        for (const [fieldId, fieldData] of Object.entries(profileFields)) {
+          if (fieldData.value) {
+            currentValues[fieldId] = fieldData.value;
+          }
+        }
+        console.log(
+          t("logs.user_profile_fetched", {
+            count: Object.keys(currentValues).length,
+          }),
+        );
+      }
+
+      // Rebuild form blocks with new user's values
+      const blocks: object[] = [
+        {
+          type: "input",
+          block_id: "target_user_block",
+          dispatch_action: true,
+          element: {
+            type: "users_select",
+            action_id: TARGET_USER_ACTION_ID,
+            initial_user: selectedUserId,
+          },
+          label: {
+            type: "plain_text",
+            text: t("form.target_user_label"),
+          },
+          hint: {
+            type: "plain_text",
+            text: t("form.target_user_hint"),
+          },
+        },
+        { type: "divider" },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*${t("messages.custom_fields_form_description")}*`,
+          },
+        },
+      ];
+
+      // Add input element for each field with selected user's current values
+      // Use target user ID as suffix to force Slack to use initial values
+      const blockIdSuffix = `_${selectedUserId}`;
+      for (const field of fields ?? []) {
+        blocks.push(
+          createFieldInput(
+            field as CustomFieldDefinitionDetail,
+            currentValues[field.id],
+            blockIdSuffix,
+          ),
+        );
+      }
+
+      // Add approver selection for non-admin users
+      if (!isAdminOrOwner && approversAvailable && approvers?.length > 0) {
+        blocks.push({ type: "divider" });
+        blocks.push({
+          type: "input",
+          block_id: "approver_block",
+          element: {
+            type: "multi_static_select",
+            action_id: "approvers",
+            placeholder: {
+              type: "plain_text",
+              text: t("form.approver_placeholder_multiple"),
+            },
+            options: approvers.map((
+              a: { id: string; name: string; real_name?: string },
+            ) => ({
+              text: {
+                type: "plain_text" as const,
+                text: a.real_name ?? a.name,
+              },
+              value: a.id,
+            })),
+          },
+          label: {
+            type: "plain_text",
+            text: t("form.approver_label_multiple"),
+          },
+          hint: {
+            type: "plain_text",
+            text: t("form.approver_hint_multiple"),
+          },
+        });
+      } else if (!isAdminOrOwner && !approversAvailable) {
+        blocks.push({ type: "divider" });
+        blocks.push({
+          type: "section",
+          block_id: "no_approvers_warning_block",
+          text: {
+            type: "mrkdwn",
+            text: t("form.no_approvers_warning"),
+          },
+        });
+      }
+
+      // Update the modal with new values
+      const updateResult = await client.views.update({
+        view_id: view.id,
+        view: {
+          type: "modal",
+          callback_id: FORM_CALLBACK_ID,
+          private_metadata: JSON.stringify({
+            channel_id: channelId,
+            operator_id: operatorId,
+            is_admin_or_owner: isAdminOrOwner,
+            approvers_available: approversAvailable,
+            approvers: approvers,
+            field_labels: fieldLabels,
+            fields: fields,
+            target_user_id: selectedUserId,
+          }),
+          title: {
+            type: "plain_text",
+            text: t("messages.custom_fields_form_title"),
+          },
+          submit: {
+            type: "plain_text",
+            text: isAdminOrOwner
+              ? t("form.submit_button")
+              : t("form.request_button"),
+          },
+          close: {
+            type: "plain_text",
+            text: t("form.cancel_button"),
+          },
+          blocks,
+        },
+      });
+
+      if (!updateResult.ok) {
+        console.error(
+          t("errors.modal_update_failed", { error: updateResult.error ?? "" }),
+        );
+      } else {
+        console.log(
+          "[BlockActionsHandler] Modal updated with new user's custom field values",
+        );
+      }
     },
   )
   // Handle modal close without submission
