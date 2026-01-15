@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.7.0](https://github.com/leaveanest/slack-utils-user/compare/v1.6.0...v1.7.0) (2026-01-15)
+
+
+### Features
+
+* show changes diff in approval message on channel ([a3e32cb](https://github.com/leaveanest/slack-utils-user/commit/a3e32cb417890282cb1b300833b68faa72b0502d))
+
+
+### Bug Fixes
+
+* only include actually changed fields in diff display ([ed0cc0f](https://github.com/leaveanest/slack-utils-user/commit/ed0cc0f2e2cf35b5ea2ccd0758dc91e339d2c655))
+
 ## [1.6.0](https://github.com/leaveanest/slack-utils-user/compare/v1.5.1...v1.6.0) (2026-01-15)
 
 
