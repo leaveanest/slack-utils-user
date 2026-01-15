@@ -998,12 +998,28 @@ export default SlackFunction(
         }
       }
 
+      // Debug: Log form values vs current values
+      console.log("[ViewSubmissionHandler] Field updates:", fieldUpdates);
+      console.log("[ViewSubmissionHandler] Current values:", currentValues);
+
       // Build changes with old and new values for diff display
+      // Only include fields where the value actually changed
       const changes: Record<string, FieldChange> = {};
       for (const [fieldId, newValue] of Object.entries(fieldUpdates)) {
-        changes[fieldId] = {
-          old: currentValues[fieldId] ?? "",
-          new: newValue,
+        const oldValue = currentValues[fieldId] ?? "";
+        if (newValue !== oldValue) {
+          changes[fieldId] = {
+            old: oldValue,
+            new: newValue,
+          };
+        }
+      }
+
+      // If no actual changes, show error
+      if (Object.keys(changes).length === 0) {
+        return {
+          response_action: "errors",
+          errors: { target_user_block: t("errors.no_fields_to_update") },
         };
       }
 
@@ -1056,11 +1072,15 @@ export default SlackFunction(
           )
           .join("\n");
 
-        // Send success notification via DM to operator
+        // Send success notification via DM to operator with changes
         await sendDirectMessage(
           client as unknown as SlackClient,
           operatorId,
-          t("messages.custom_fields_updated"),
+          t("messages.custom_fields_update_notification", {
+            target: targetUserId,
+            updater: operatorId,
+            changes: changesText,
+          }),
         );
 
         // Send channel notification to the source channel

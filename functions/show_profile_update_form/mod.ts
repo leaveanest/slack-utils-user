@@ -968,21 +968,31 @@ export default SlackFunction(
       );
       const currentProfile = currentProfileResult.profile ?? {};
 
+      // Debug: Log form values vs current profile
+      console.log("[ViewSubmissionHandler] Form values:", {
+        displayName,
+        title,
+        phone,
+        pronouns,
+      });
+      console.log("[ViewSubmissionHandler] Current profile:", currentProfile);
+
       // Build profile changes with old and new values for diff display
+      // Only include fields where the value actually changed
       const changes: Record<string, ProfileChange> = {};
-      if (displayName) {
+      if (displayName && displayName !== (currentProfile.display_name ?? "")) {
         changes.display_name = {
           old: currentProfile.display_name ?? "",
           new: displayName,
         };
       }
-      if (title) {
+      if (title && title !== (currentProfile.title ?? "")) {
         changes.title = { old: currentProfile.title ?? "", new: title };
       }
-      if (phone) {
+      if (phone && phone !== (currentProfile.phone ?? "")) {
         changes.phone = { old: currentProfile.phone ?? "", new: phone };
       }
-      if (pronouns) {
+      if (pronouns && pronouns !== (currentProfile.pronouns ?? "")) {
         changes.pronouns = {
           old: currentProfile.pronouns ?? "",
           new: pronouns,
@@ -1051,12 +1061,14 @@ export default SlackFunction(
           )
           .join("\n");
 
-        // Send success notification via DM to operator
+        // Send success notification via DM to operator with changes
         await sendDirectMessage(
           client,
           operatorId,
-          t("messages.profile_updated_for_user", {
-            userId: targetUserId,
+          t("messages.update_success_notification", {
+            target: targetUserId,
+            updater: operatorId,
+            changes: changesText,
           }),
         );
 
