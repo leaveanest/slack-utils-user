@@ -283,6 +283,14 @@ interface ProfileField {
 }
 
 /**
+ * Field change with old and new values for diff display
+ */
+interface FieldChange {
+  old: string;
+  new: string;
+}
+
+/**
  * Check if user is admin or owner
  */
 async function checkUserPermissions(
@@ -451,13 +459,17 @@ async function sendDirectMessage(
 function buildApprovalMessage(
   requesterId: string,
   targetUserId: string,
-  changes: Record<string, string>,
+  changes: Record<string, FieldChange>,
   fieldLabels: Record<string, string>,
   approverIds?: string[],
 ) {
   const changesText = Object.entries(changes)
-    .map(([fieldId, value]) =>
-      `• *${fieldLabels[fieldId] ?? fieldId}*: ${value}`
+    .map(([fieldId, change]) =>
+      t("messages.field_change", {
+        field: fieldLabels[fieldId] ?? fieldId,
+        old: change.old || t("messages.no_changes"),
+        new: change.new,
+      })
     )
     .join("\n");
 
@@ -969,6 +981,32 @@ export default SlackFunction(
         };
       }
 
+      // Fetch current field values to show before/after diff
+      const userProfileResponse = await client.users.profile.get({
+        user: targetUserId,
+      });
+      const currentValues: Record<string, string> = {};
+      if (userProfileResponse.ok && userProfileResponse.profile?.fields) {
+        const profileFields = userProfileResponse.profile.fields as Record<
+          string,
+          { value?: string }
+        >;
+        for (const [fieldId, fieldData] of Object.entries(profileFields)) {
+          if (fieldData.value) {
+            currentValues[fieldId] = fieldData.value;
+          }
+        }
+      }
+
+      // Build changes with old and new values for diff display
+      const changes: Record<string, FieldChange> = {};
+      for (const [fieldId, newValue] of Object.entries(fieldUpdates)) {
+        changes[fieldId] = {
+          old: currentValues[fieldId] ?? "",
+          new: newValue,
+        };
+      }
+
       // Get Admin User Token
       const adminToken = env.SLACK_ADMIN_USER_TOKEN;
       if (!adminToken) {
@@ -1007,10 +1045,14 @@ export default SlackFunction(
 
         console.log(t("logs.custom_fields_updated"));
 
-        // Build changes text for notification
-        const changesText = Object.entries(fieldUpdates)
-          .map(([fieldId, value]) =>
-            `• *${fieldLabels[fieldId] ?? fieldId}*: ${value}`
+        // Build changes text with before → after diff for notification
+        const changesText = Object.entries(changes)
+          .map(([fieldId, change]) =>
+            t("messages.field_change", {
+              field: fieldLabels[fieldId] ?? fieldId,
+              old: change.old || t("messages.no_changes"),
+              new: change.new,
+            })
           )
           .join("\n");
 
@@ -1067,7 +1109,7 @@ export default SlackFunction(
         const blocks = buildApprovalMessage(
           operatorId,
           targetUserId,
-          fieldUpdates,
+          changes,
           fieldLabels,
           approverIds,
         );
@@ -1161,11 +1203,23 @@ export default SlackFunction(
         return;
       }
 
+      // Extract new values for API call (changes has { old, new } format)
+      const newValues: Record<string, string> = {};
+      for (const [fieldId, change] of Object.entries(changes)) {
+        if (typeof change === "object" && change !== null && "new" in change) {
+          const changeObj = change as { old: string; new: string };
+          newValues[fieldId] = changeObj.new;
+        } else {
+          // Fallback for old format (string value)
+          newValues[fieldId] = String(change);
+        }
+      }
+
       // Update custom fields
       console.log(t("logs.updating_custom_fields"));
       const result = await updateCustomFields(
         target_user_id,
-        changes,
+        newValues,
         adminToken,
       );
 
@@ -1215,11 +1269,23 @@ export default SlackFunction(
         text: approvedText,
       });
 
-      // Build changes text for notification
-      const changesText = Object.entries(changes as Record<string, string>)
-        .map(([fieldId, value]) =>
-          `• *${field_labels[fieldId] ?? fieldId}*: ${value}`
-        )
+      // Build changes text with before → after diff for notification
+      const changesText = Object.entries(changes)
+        .map(([fieldId, change]) => {
+          if (
+            typeof change === "object" && change !== null && "new" in change
+          ) {
+            const changeObj = change as { old: string; new: string };
+            return t("messages.field_change", {
+              field: field_labels[fieldId] ?? fieldId,
+              old: changeObj.old || t("messages.no_changes"),
+              new: changeObj.new,
+            });
+          } else {
+            // Fallback for old format
+            return `• ${field_labels[fieldId] ?? fieldId}: ${String(change)}`;
+          }
+        })
         .join("\n");
 
       // Notify requester via DM

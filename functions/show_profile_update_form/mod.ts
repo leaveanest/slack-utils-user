@@ -38,6 +38,14 @@ interface UserProfile {
 }
 
 /**
+ * Profile change with old and new values for diff display
+ */
+interface ProfileChange {
+  old: string;
+  new: string;
+}
+
+/**
  * Function definition for ShowProfileUpdateForm
  */
 export const ShowProfileUpdateFormDefinition = DefineFunction({
@@ -384,12 +392,18 @@ function buildProfileFormView(
 function buildApprovalMessage(
   requesterId: string,
   targetUserId: string,
-  changes: Record<string, string>,
+  changes: Record<string, ProfileChange>,
   reason?: string,
   approverIds?: string[],
 ) {
   const changesText = Object.entries(changes)
-    .map(([field, value]) => `• *${field}*: ${value}`)
+    .map(([field, change]) =>
+      t("messages.field_change", {
+        field,
+        old: change.old || t("messages.no_changes"),
+        new: change.new,
+      })
+    )
     .join("\n");
 
   const approverMentions = approverIds?.map((id) => `<@${id}>`).join(", ") ??
@@ -947,12 +961,33 @@ export default SlackFunction(
         ) ?? [];
       const reason = values.reason_block?.reason?.value ?? "";
 
-      // Build profile changes
-      const changes: Record<string, string> = {};
-      if (displayName) changes.display_name = displayName;
-      if (title) changes.title = title;
-      if (phone) changes.phone = phone;
-      if (pronouns) changes.pronouns = pronouns;
+      // Fetch current profile to show before/after diff
+      const currentProfileResult = await fetchUserProfile(
+        client as unknown as SlackClient,
+        targetUserId,
+      );
+      const currentProfile = currentProfileResult.profile ?? {};
+
+      // Build profile changes with old and new values for diff display
+      const changes: Record<string, ProfileChange> = {};
+      if (displayName) {
+        changes.display_name = {
+          old: currentProfile.display_name ?? "",
+          new: displayName,
+        };
+      }
+      if (title) {
+        changes.title = { old: currentProfile.title ?? "", new: title };
+      }
+      if (phone) {
+        changes.phone = { old: currentProfile.phone ?? "", new: phone };
+      }
+      if (pronouns) {
+        changes.pronouns = {
+          old: currentProfile.pronouns ?? "",
+          new: pronouns,
+        };
+      }
 
       if (Object.keys(changes).length === 0) {
         return {
@@ -987,7 +1022,13 @@ export default SlackFunction(
           };
         }
 
-        const result = await updateProfile(targetUserId, changes, adminToken);
+        // Extract new values for API call
+        const newValues: Record<string, string> = {};
+        for (const [field, change] of Object.entries(changes)) {
+          newValues[field] = change.new;
+        }
+
+        const result = await updateProfile(targetUserId, newValues, adminToken);
         if (!result.ok) {
           return {
             response_action: "errors",
@@ -999,9 +1040,15 @@ export default SlackFunction(
           };
         }
 
-        // Build changes text for notification
+        // Build changes text with before → after diff for notification
         const changesText = Object.entries(changes)
-          .map(([field, value]) => `• *${field}*: ${value}`)
+          .map(([field, change]) =>
+            t("messages.field_change", {
+              field,
+              old: change.old || t("messages.no_changes"),
+              new: change.new,
+            })
+          )
           .join("\n");
 
         // Send success notification via DM to operator
@@ -1144,8 +1191,20 @@ export default SlackFunction(
         return;
       }
 
+      // Extract new values for API call (changes has { old, new } format)
+      const newValues: Record<string, string> = {};
+      for (const [field, change] of Object.entries(changes)) {
+        if (typeof change === "object" && change !== null && "new" in change) {
+          const changeObj = change as { old: string; new: string };
+          newValues[field] = changeObj.new;
+        } else {
+          // Fallback for old format (string value)
+          newValues[field] = String(change);
+        }
+      }
+
       // Update profile
-      const result = await updateProfile(target_user_id, changes, adminToken);
+      const result = await updateProfile(target_user_id, newValues, adminToken);
       if (!result.ok) {
         await client.chat.postEphemeral({
           channel: body.channel?.id ?? "",
@@ -1190,6 +1249,25 @@ export default SlackFunction(
         text: approvedText,
       });
 
+      // Build changes text with before → after diff
+      const changesText = Object.entries(changes)
+        .map(([field, change]) => {
+          if (
+            typeof change === "object" && change !== null && "new" in change
+          ) {
+            const changeObj = change as { old: string; new: string };
+            return t("messages.field_change", {
+              field,
+              old: changeObj.old || t("messages.no_changes"),
+              new: changeObj.new,
+            });
+          } else {
+            // Fallback for old format
+            return `• ${field}: ${String(change)}`;
+          }
+        })
+        .join("\n");
+
       // Notify requester via DM
       await sendDirectMessage(
         client,
@@ -1197,9 +1275,7 @@ export default SlackFunction(
         t("messages.update_success_notification", {
           target: target_user_id,
           updater: reviewerId,
-          changes: Object.entries(changes).map(([k, v]) => `• ${k}: ${v}`).join(
-            "\n",
-          ),
+          changes: changesText,
         }),
       );
 
