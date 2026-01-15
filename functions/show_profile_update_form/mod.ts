@@ -119,6 +119,7 @@ function buildProfileFormView(
   operatorId: string,
   isAdminOrOwner: boolean,
   approvers: Array<{ id: string; name: string; real_name?: string }>,
+  channelId: string,
 ) {
   const blocks: Array<Record<string, unknown>> = [];
 
@@ -237,7 +238,7 @@ function buildProfileFormView(
     },
   });
 
-  // Approver selection (only for non-admin users)
+  // Approver selection (only for non-admin users when approvers are available)
   if (!isAdminOrOwner && approvers.length > 0) {
     const approverOptions = approvers.map((a) => ({
       text: {
@@ -291,6 +292,16 @@ function buildProfileFormView(
         text: t("form.reason_hint"),
       },
     });
+  } else if (!isAdminOrOwner && approvers.length === 0) {
+    // Show warning when no approvers are available
+    blocks.push({
+      type: "section",
+      block_id: "no_approvers_warning_block",
+      text: {
+        type: "mrkdwn",
+        text: t("form.no_approvers_warning"),
+      },
+    });
   }
 
   return {
@@ -299,6 +310,8 @@ function buildProfileFormView(
     private_metadata: JSON.stringify({
       operator_id: operatorId,
       is_admin_or_owner: isAdminOrOwner,
+      approvers_available: approvers.length > 0,
+      channel_id: channelId,
     }),
     title: {
       type: "plain_text" as const,
@@ -672,7 +685,7 @@ export default SlackFunction(
     // Initialize i18n system
     await initI18n();
 
-    const { interactivity, user_id, channel_id: _channel_id } = inputs;
+    const { interactivity, user_id, channel_id } = inputs;
 
     console.log(t("logs.starting"));
     console.log(
@@ -771,6 +784,7 @@ export default SlackFunction(
         user_id,
         permResult.isAdminOrOwner,
         approvers,
+        channel_id,
       );
       const updateResult = await client.views.update({
         view_id: viewId,
@@ -813,6 +827,8 @@ export default SlackFunction(
       const metadata = JSON.parse(view.private_metadata ?? "{}");
       const operatorId = metadata.operator_id;
       const isAdminOrOwner = metadata.is_admin_or_owner;
+      const approversAvailable = metadata.approvers_available ?? false;
+      const sourceChannelId = metadata.channel_id;
 
       // Extract form values
       const targetUserId =
@@ -877,7 +893,12 @@ export default SlackFunction(
           };
         }
 
-        // Send success notification via DM
+        // Build changes text for notification
+        const changesText = Object.entries(changes)
+          .map(([field, value]) => `• *${field}*: ${value}`)
+          .join("\n");
+
+        // Send success notification via DM to operator
         await sendDirectMessage(
           client,
           operatorId,
@@ -885,6 +906,18 @@ export default SlackFunction(
             userId: targetUserId,
           }),
         );
+
+        // Send channel notification to the source channel
+        if (sourceChannelId) {
+          await client.chat.postMessage({
+            channel: sourceChannelId,
+            text: t("messages.update_success_notification", {
+              target: targetUserId,
+              updater: operatorId,
+              changes: changesText,
+            }),
+          });
+        }
 
         // Complete the function
         await client.functions.completeSuccess({
@@ -897,6 +930,16 @@ export default SlackFunction(
         });
       } else {
         // Approval required
+        // Check if approvers are available
+        if (!approversAvailable) {
+          return {
+            response_action: "errors",
+            errors: {
+              target_user_block: t("errors.no_approvers_available"),
+            },
+          };
+        }
+
         if (!approverIds || approverIds.length === 0) {
           return {
             response_action: "errors",
@@ -906,16 +949,7 @@ export default SlackFunction(
           };
         }
 
-        if (!config.approval_channel_id) {
-          return {
-            response_action: "errors",
-            errors: {
-              approver_block: t("errors.missing_approval_channel"),
-            },
-          };
-        }
-
-        // Send approval request
+        // Send approval request to source channel
         const blocks = buildApprovalMessage(
           operatorId,
           targetUserId,
@@ -924,11 +958,25 @@ export default SlackFunction(
           approverIds,
         );
 
-        await client.chat.postMessage({
-          channel: config.approval_channel_id,
-          blocks,
-          text: t("messages.approval_request_header"),
-        });
+        if (sourceChannelId) {
+          await client.chat.postMessage({
+            channel: sourceChannelId,
+            blocks,
+            text: t("messages.approval_request_header"),
+          });
+        }
+
+        // Send DM notification to each approver
+        for (const approverId of approverIds) {
+          await sendDirectMessage(
+            client,
+            approverId,
+            t("messages.approval_request_dm", {
+              requester: operatorId,
+              target: targetUserId,
+            }),
+          );
+        }
 
         // Notify requester via DM
         await sendDirectMessage(
@@ -937,15 +985,9 @@ export default SlackFunction(
           t("messages.approval_request_sent"),
         );
 
-        // Complete the function
-        await client.functions.completeSuccess({
-          function_execution_id: view.function_data?.execution_id ?? "",
-          outputs: {
-            success: true,
-            approval_required: true,
-            updated_user_id: targetUserId,
-          },
-        });
+        // DO NOT call completeSuccess here!
+        // The function must remain incomplete to handle BlockActions (approve/deny buttons)
+        // completeSuccess will be called in the BlockActionsHandler
       }
 
       return;
@@ -1053,6 +1095,16 @@ export default SlackFunction(
           ),
         }),
       );
+
+      // Complete the function
+      await client.functions.completeSuccess({
+        function_execution_id: body.function_data.execution_id,
+        outputs: {
+          success: true,
+          approval_required: true,
+          updated_user_id: target_user_id,
+        },
+      });
     },
   )
   // Handle denial action
@@ -1122,5 +1174,15 @@ export default SlackFunction(
 
       // Notify requester via DM
       await sendDirectMessage(client, requester_id, deniedText);
+
+      // Complete the function
+      await client.functions.completeSuccess({
+        function_execution_id: body.function_data.execution_id,
+        outputs: {
+          success: false,
+          approval_required: true,
+          updated_user_id: target_user_id,
+        },
+      });
     },
   );

@@ -1,9 +1,10 @@
 /**
  * ShowCustomFieldsForm function
  *
- * Displays a modal form for updating custom fields.
+ * Displays a modal form for updating custom fields with approval workflow support.
  * Fetches custom field definitions from team.profile.get API and
  * creates appropriate input elements based on field types.
+ * For non-admin users, requires approval from admins/owners.
  *
  * @module functions/show_custom_fields_form
  */
@@ -11,6 +12,84 @@
 import { DefineFunction, Schema, SlackFunction } from "deno-slack-sdk/mod.ts";
 import { initI18n, t } from "../../lib/i18n/mod.ts";
 import type { CustomFieldDefinitionDetail } from "../../lib/types/custom_fields.ts";
+
+// Callback IDs for modal and block actions
+const FORM_CALLBACK_ID = "custom_fields_form_modal";
+const APPROVE_ACTION_ID = "approve_custom_fields_update";
+const DENY_ACTION_ID = "deny_custom_fields_update";
+
+/**
+ * Slack client type definition
+ */
+interface SlackClient {
+  users: {
+    info: (params: { user: string }) => Promise<{
+      ok: boolean;
+      error?: string;
+      user?: {
+        is_admin?: boolean;
+        is_owner?: boolean;
+        is_primary_owner?: boolean;
+      };
+    }>;
+  };
+  conversations: {
+    open: (params: { users: string }) => Promise<{
+      ok: boolean;
+      error?: string;
+      channel?: { id: string };
+    }>;
+  };
+  chat: {
+    postMessage: (params: {
+      channel: string;
+      text: string;
+      blocks?: unknown[];
+    }) => Promise<{ ok: boolean; error?: string }>;
+    postEphemeral: (params: {
+      channel: string;
+      user: string;
+      text: string;
+    }) => Promise<{ ok: boolean; error?: string }>;
+    update: (params: {
+      channel: string;
+      ts: string;
+      text: string;
+      blocks?: unknown[];
+    }) => Promise<{ ok: boolean; error?: string }>;
+  };
+}
+
+/**
+ * Admin users list API response type
+ */
+interface AdminUsersListResponse {
+  ok: boolean;
+  error?: string;
+  users?: Array<{
+    id: string;
+    username?: string;
+    full_name?: string;
+    is_admin?: boolean;
+    is_owner?: boolean;
+    is_primary_owner?: boolean;
+    is_bot?: boolean;
+    deleted?: boolean;
+    is_restricted?: boolean;
+    is_ultra_restricted?: boolean;
+  }>;
+  response_metadata?: {
+    next_cursor?: string;
+  };
+}
+
+/**
+ * Fetch approvers result type
+ */
+interface FetchApproversResult {
+  approvers: Array<{ id: string; name: string; real_name?: string }>;
+  error?: string;
+}
 
 /**
  * Function definition for ShowCustomFieldsForm
@@ -200,6 +279,295 @@ interface ProfileField {
 }
 
 /**
+ * Check if user is admin or owner
+ */
+async function checkUserPermissions(
+  client: SlackClient,
+  userId: string,
+): Promise<{ isAdminOrOwner: boolean; error?: string }> {
+  console.log("[checkUserPermissions] Calling users.info with userId:", userId);
+  const response = await client.users.info({ user: userId });
+  console.log(
+    "[checkUserPermissions] Response ok:",
+    response.ok,
+    "error:",
+    response.error,
+  );
+  if (!response.ok) {
+    return { isAdminOrOwner: false, error: response.error };
+  }
+
+  const isAdminOrOwner = response.user?.is_admin ||
+    response.user?.is_owner ||
+    response.user?.is_primary_owner ||
+    false;
+
+  return { isAdminOrOwner };
+}
+
+/**
+ * Fetch authorized approvers (admins and owners)
+ */
+async function fetchApprovers(
+  adminToken: string,
+  teamId: string,
+  excludeUserId?: string,
+): Promise<FetchApproversResult> {
+  const approvers: Array<{ id: string; name: string; real_name?: string }> = [];
+  let cursor: string | undefined;
+
+  const MAX_PAGES = 50;
+  let pageCount = 0;
+
+  do {
+    pageCount++;
+    if (pageCount > MAX_PAGES) {
+      console.warn(t("logs.max_page_limit_reached", { limit: MAX_PAGES }));
+      break;
+    }
+
+    const params = new URLSearchParams({
+      team_id: teamId,
+      limit: "200",
+    });
+
+    if (cursor) {
+      params.append("cursor", cursor);
+    }
+
+    console.log(
+      "[fetchApprovers] Calling admin.users.list with cursor:",
+      cursor,
+    );
+    const response = await fetch(
+      `https://slack.com/api/admin.users.list?${params.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${adminToken}`,
+          "Content-Type": "application/json; charset=utf-8",
+        },
+      },
+    );
+
+    const result: AdminUsersListResponse = await response.json();
+
+    console.log(
+      "[fetchApprovers] Response ok:",
+      result.ok,
+      "error:",
+      result.error,
+      "users count:",
+      result.users?.length,
+    );
+
+    if (!result.ok) {
+      const errorCode = result.error ?? "unknown_error";
+      console.error(t("errors.api_call_failed", { error: errorCode }));
+      return {
+        approvers: [],
+        error: t("errors.api_call_failed", { error: errorCode }),
+      };
+    }
+
+    if (result.users) {
+      for (const user of result.users) {
+        if (
+          user.is_bot || user.deleted || user.is_restricted ||
+          user.is_ultra_restricted
+        ) continue;
+        if (excludeUserId && user.id === excludeUserId) continue;
+        if (user.is_admin || user.is_owner || user.is_primary_owner) {
+          if (approvers.some((u) => u.id === user.id)) {
+            continue;
+          }
+
+          approvers.push({
+            id: user.id,
+            name: user.username ?? "",
+            real_name: user.full_name ?? "",
+          });
+        }
+      }
+    }
+
+    const newCursor = result.response_metadata?.next_cursor;
+    if (!newCursor || newCursor === "" || newCursor === cursor) {
+      break;
+    }
+    cursor = newCursor;
+  } while (true);
+
+  return { approvers };
+}
+
+/**
+ * Send a direct message to a user
+ */
+async function sendDirectMessage(
+  client: SlackClient,
+  userId: string,
+  text: string,
+  blocks?: unknown[],
+): Promise<{ ok: boolean; error?: string }> {
+  const openResult = await client.conversations.open({ users: userId });
+  if (!openResult.ok) {
+    console.error(
+      t("errors.api_call_failed", { error: openResult.error ?? "unknown" }),
+    );
+    return { ok: false, error: openResult.error };
+  }
+
+  const dmChannelId = openResult.channel?.id;
+  if (!dmChannelId) {
+    console.error(t("errors.api_call_failed", { error: "no_channel_id" }));
+    return { ok: false, error: "no_channel_id" };
+  }
+
+  const messageParams: { channel: string; text: string; blocks?: unknown[] } = {
+    channel: dmChannelId,
+    text,
+  };
+  if (blocks) {
+    messageParams.blocks = blocks;
+  }
+
+  const postResult = await client.chat.postMessage(messageParams);
+  if (!postResult.ok) {
+    console.error(
+      t("errors.api_call_failed", { error: postResult.error ?? "unknown" }),
+    );
+  }
+  return { ok: postResult.ok, error: postResult.error };
+}
+
+/**
+ * Build approval request message blocks
+ */
+function buildApprovalMessage(
+  requesterId: string,
+  targetUserId: string,
+  changes: Record<string, string>,
+  fieldLabels: Record<string, string>,
+  approverIds?: string[],
+) {
+  const changesText = Object.entries(changes)
+    .map(([fieldId, value]) =>
+      `• *${fieldLabels[fieldId] ?? fieldId}*: ${value}`
+    )
+    .join("\n");
+
+  const approverMentions = approverIds?.map((id) => `<@${id}>`).join(", ") ??
+    "";
+
+  // deno-lint-ignore no-explicit-any
+  const blocks: any[] = [
+    {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: t("messages.custom_fields_approval_request_header"),
+      },
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: t("messages.custom_fields_approval_request_details", {
+          requester: requesterId,
+          target: targetUserId,
+          changes: changesText,
+        }),
+      },
+    },
+  ];
+
+  if (approverMentions) {
+    blocks.push({
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: `👤 ${t("form.approver_label_multiple")}: ${approverMentions}`,
+        },
+      ],
+    });
+  }
+
+  blocks.push({
+    type: "actions",
+    elements: [
+      {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: t("messages.approve_button"),
+        },
+        style: "primary",
+        action_id: APPROVE_ACTION_ID,
+        value: JSON.stringify({
+          requester_id: requesterId,
+          target_user_id: targetUserId,
+          changes,
+          field_labels: fieldLabels,
+          approver_ids: approverIds,
+        }),
+      },
+      {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: t("messages.deny_button"),
+        },
+        style: "danger",
+        action_id: DENY_ACTION_ID,
+        value: JSON.stringify({
+          requester_id: requesterId,
+          target_user_id: targetUserId,
+          changes,
+          field_labels: fieldLabels,
+          approver_ids: approverIds,
+        }),
+      },
+    ],
+  });
+
+  return blocks;
+}
+
+/**
+ * Update custom fields via Slack API
+ */
+async function updateCustomFields(
+  targetUserId: string,
+  fieldUpdates: Record<string, string>,
+  adminToken: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const fields: Record<string, { value: string; alt: string }> = {};
+  for (const [fieldId, value] of Object.entries(fieldUpdates)) {
+    fields[fieldId] = { value, alt: "" };
+  }
+
+  const updateResponse = await fetch(
+    "https://slack.com/api/users.profile.set",
+    {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${adminToken}`,
+        "Content-Type": "application/json; charset=utf-8",
+      },
+      body: JSON.stringify({
+        user: targetUserId,
+        profile: { fields },
+      }),
+    },
+  );
+
+  const result = await updateResponse.json();
+  return { ok: result.ok, error: result.error };
+}
+
+/**
  * ShowCustomFieldsForm function implementation
  *
  * Displays a modal form for updating custom fields. The form includes:
@@ -215,16 +583,92 @@ interface ProfileField {
  */
 export default SlackFunction(
   ShowCustomFieldsFormDefinition,
-  async ({ inputs, client }) => {
+  async ({ inputs, client, env }) => {
     // Initialize i18n system
     await initI18n();
 
     console.log(t("logs.modal_opened"));
 
     try {
-      // 1. Fetch custom field definitions
+      // 1. Show loading modal first
+      const loadingResult = await client.views.open({
+        trigger_id: inputs.interactivity.interactivity_pointer,
+        view: {
+          type: "modal",
+          callback_id: FORM_CALLBACK_ID,
+          title: {
+            type: "plain_text",
+            text: t("form.loading_title"),
+          },
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: t("form.loading_message"),
+              },
+            },
+          ],
+        },
+      });
+
+      if (!loadingResult.ok) {
+        console.error(
+          t("errors.modal_open_failed", { error: loadingResult.error ?? "" }),
+        );
+        return {
+          error: t("errors.modal_open_failed", {
+            error: loadingResult.error ?? "",
+          }),
+          outputs: { success: false },
+        };
+      }
+
+      const viewId = loadingResult.view?.id;
+
+      // 2. Get admin token and team_id
+      const adminToken = env.SLACK_ADMIN_USER_TOKEN;
+      if (!adminToken) {
+        return {
+          error: t("errors.missing_admin_token"),
+          outputs: { success: false },
+        };
+      }
+
+      // Get team_id using auth.test
+      const authResponse = await client.auth.test();
+      if (!authResponse.ok || !authResponse.team_id) {
+        return {
+          error: t("errors.api_call_failed", {
+            error: authResponse.error ?? "no_team_id",
+          }),
+          outputs: { success: false },
+        };
+      }
+      const teamId = authResponse.team_id as string;
+
+      // 3. Fetch permissions, approvers, and custom fields in parallel
       console.log(t("logs.fetching_custom_fields"));
-      const profileResponse = await client.team.profile.get({});
+      const [permResult, approversResult, profileResponse] = await Promise.all([
+        checkUserPermissions(client as unknown as SlackClient, inputs.user_id),
+        fetchApprovers(adminToken, teamId, inputs.user_id),
+        client.team.profile.get({}),
+      ]);
+
+      if (permResult.error) {
+        return {
+          error: t("errors.api_call_failed", { error: permResult.error }),
+          outputs: { success: false },
+        };
+      }
+
+      if (approversResult.error) {
+        return {
+          error: approversResult.error,
+          outputs: { success: false },
+        };
+      }
+
       if (!profileResponse.ok) {
         throw new Error(
           t("errors.api_call_failed", {
@@ -233,13 +677,26 @@ export default SlackFunction(
         );
       }
 
+      const isAdminOrOwner = permResult.isAdminOrOwner;
+      const approvers = approversResult.approvers;
+
+      console.log(
+        t("logs.authorized_users_fetched", { count: approvers.length }),
+      );
+
       // Filter out hidden and protected fields
       const fields = ((profileResponse.profile?.fields || []) as ProfileField[])
         .filter((f) => !f.is_hidden && !f.options?.is_protected);
 
       console.log(t("logs.custom_fields_fetched", { count: fields.length }));
 
-      // 2. Fetch target user's current profile values
+      // Build field labels map
+      const fieldLabels: Record<string, string> = {};
+      for (const field of fields) {
+        fieldLabels[field.id] = field.label;
+      }
+
+      // 4. Fetch target user's current profile values
       console.log(t("logs.fetching_user_profile", { userId: inputs.user_id }));
       const userProfileResponse = await client.users.profile.get({
         user: inputs.user_id,
@@ -266,10 +723,11 @@ export default SlackFunction(
 
       if (fields.length === 0) {
         // Show message when no fields are available
-        await client.views.open({
-          trigger_id: inputs.interactivity.interactivity_pointer,
+        await client.views.update({
+          view_id: viewId,
           view: {
             type: "modal",
+            callback_id: FORM_CALLBACK_ID,
             title: {
               type: "plain_text",
               text: t("messages.custom_fields_form_title"),
@@ -289,7 +747,7 @@ export default SlackFunction(
         return { outputs: { success: true } };
       }
 
-      // 2. Build form blocks
+      // 5. Build form blocks
       const blocks: object[] = [
         {
           type: "input",
@@ -302,6 +760,10 @@ export default SlackFunction(
           label: {
             type: "plain_text",
             text: t("form.target_user_label"),
+          },
+          hint: {
+            type: "plain_text",
+            text: t("form.target_user_hint"),
           },
         },
         { type: "divider" },
@@ -324,15 +786,61 @@ export default SlackFunction(
         );
       }
 
-      // 3. Open the modal
-      const viewResponse = await client.views.open({
-        trigger_id: inputs.interactivity.interactivity_pointer,
+      // Add approver selection for non-admin users
+      if (!isAdminOrOwner && approvers.length > 0) {
+        blocks.push({ type: "divider" });
+        blocks.push({
+          type: "input",
+          block_id: "approver_block",
+          element: {
+            type: "multi_static_select",
+            action_id: "approvers",
+            placeholder: {
+              type: "plain_text",
+              text: t("form.approver_placeholder_multiple"),
+            },
+            options: approvers.map((a) => ({
+              text: {
+                type: "plain_text" as const,
+                text: a.real_name ?? a.name,
+              },
+              value: a.id,
+            })),
+          },
+          label: {
+            type: "plain_text",
+            text: t("form.approver_label_multiple"),
+          },
+          hint: {
+            type: "plain_text",
+            text: t("form.approver_hint_multiple"),
+          },
+        });
+      } else if (!isAdminOrOwner && approvers.length === 0) {
+        // Show warning when no approvers are available
+        blocks.push({ type: "divider" });
+        blocks.push({
+          type: "section",
+          block_id: "no_approvers_warning_block",
+          text: {
+            type: "mrkdwn",
+            text: t("form.no_approvers_warning"),
+          },
+        });
+      }
+
+      // 6. Update modal with the form
+      const viewResponse = await client.views.update({
+        view_id: viewId,
         view: {
           type: "modal",
-          callback_id: "custom_fields_form_modal",
+          callback_id: FORM_CALLBACK_ID,
           private_metadata: JSON.stringify({
             channel_id: inputs.channel_id,
             operator_id: inputs.user_id,
+            is_admin_or_owner: isAdminOrOwner,
+            approvers_available: approvers.length > 0,
+            field_labels: fieldLabels,
           }),
           title: {
             type: "plain_text",
@@ -340,7 +848,9 @@ export default SlackFunction(
           },
           submit: {
             type: "plain_text",
-            text: t("form.submit_button"),
+            text: isAdminOrOwner
+              ? t("form.submit_button")
+              : t("form.request_button"),
           },
           close: {
             type: "plain_text",
@@ -351,12 +861,18 @@ export default SlackFunction(
       });
 
       if (!viewResponse.ok) {
-        throw new Error(
-          t("errors.modal_open_failed", {
-            error: viewResponse.error ?? t("errors.unknown_error"),
-          }),
+        console.error(
+          t("errors.modal_update_failed", { error: viewResponse.error ?? "" }),
         );
+        return {
+          error: t("errors.modal_update_failed", {
+            error: viewResponse.error ?? "",
+          }),
+          outputs: { success: false },
+        };
       }
+
+      console.log(t("logs.modal_opened"));
 
       // Return completed: false to wait for modal submission
       return { completed: false };
@@ -369,11 +885,17 @@ export default SlackFunction(
 )
   // Modal submission handler
   .addViewSubmissionHandler(
-    ["custom_fields_form_modal"],
+    [FORM_CALLBACK_ID],
     async ({ view, client, env, body }) => {
       await initI18n();
+      console.log(t("logs.form_submitted"));
 
       const metadata = JSON.parse(view.private_metadata || "{}");
+      const operatorId = metadata.operator_id;
+      const isAdminOrOwner = metadata.is_admin_or_owner ?? false;
+      const approversAvailable = metadata.approvers_available ?? false;
+      const fieldLabels = metadata.field_labels ?? {};
+      const sourceChannelId = metadata.channel_id;
       const values = view.state.values;
 
       // Get target user
@@ -385,6 +907,12 @@ export default SlackFunction(
           errors: { target_user_block: t("errors.user_not_selected") },
         };
       }
+
+      // Get approver IDs (for non-admin users)
+      const approverIds =
+        values.approver_block?.approvers?.selected_options?.map(
+          (opt: { value: string }) => opt.value,
+        ) ?? [];
 
       // Collect field updates
       const fieldUpdates: Record<string, string> = {};
@@ -429,64 +957,366 @@ export default SlackFunction(
         };
       }
 
-      // Build fields object for API
-      const fields: Record<string, { value: string; alt: string }> = {};
-      for (const [fieldId, value] of Object.entries(fieldUpdates)) {
-        fields[fieldId] = { value, alt: "" };
+      const isSelf = operatorId === targetUserId;
+
+      // Determine if direct execution is allowed
+      // Admin/Owner can always execute directly
+      // For custom fields, non-admin users always need approval when updating other users
+      const canExecuteDirectly = isAdminOrOwner || isSelf;
+
+      if (canExecuteDirectly) {
+        // Direct execution
+        console.log(t("logs.updating_custom_fields"));
+        const result = await updateCustomFields(
+          targetUserId,
+          fieldUpdates,
+          adminToken,
+        );
+
+        if (!result.ok) {
+          return {
+            response_action: "errors",
+            errors: {
+              target_user_block: t("errors.custom_field_update_failed", {
+                error: result.error ?? "",
+              }),
+            },
+          };
+        }
+
+        console.log(t("logs.custom_fields_updated"));
+
+        // Build changes text for notification
+        const changesText = Object.entries(fieldUpdates)
+          .map(([fieldId, value]) =>
+            `• *${fieldLabels[fieldId] ?? fieldId}*: ${value}`
+          )
+          .join("\n");
+
+        // Send success notification via DM to operator
+        await sendDirectMessage(
+          client as unknown as SlackClient,
+          operatorId,
+          t("messages.custom_fields_updated"),
+        );
+
+        // Send channel notification to the source channel
+        if (sourceChannelId) {
+          await client.chat.postMessage({
+            channel: sourceChannelId,
+            text: t("messages.custom_fields_update_notification", {
+              target: targetUserId,
+              updater: operatorId,
+              changes: changesText,
+            }),
+          });
+        }
+
+        // Complete the function
+        await client.functions.completeSuccess({
+          function_execution_id: body.function_data.execution_id,
+          outputs: {
+            success: true,
+            approval_required: false,
+            updated_user_id: targetUserId,
+          },
+        });
+      } else {
+        // Approval required
+        // Check if approvers are available
+        if (!approversAvailable) {
+          return {
+            response_action: "errors",
+            errors: {
+              target_user_block: t("errors.no_approvers_available"),
+            },
+          };
+        }
+
+        if (!approverIds || approverIds.length === 0) {
+          return {
+            response_action: "errors",
+            errors: {
+              approver_block: t("errors.no_approver_selected"),
+            },
+          };
+        }
+
+        // Send approval request to source channel
+        const blocks = buildApprovalMessage(
+          operatorId,
+          targetUserId,
+          fieldUpdates,
+          fieldLabels,
+          approverIds,
+        );
+
+        if (sourceChannelId) {
+          await client.chat.postMessage({
+            channel: sourceChannelId,
+            blocks,
+            text: t("messages.custom_fields_approval_request_header"),
+          });
+        }
+
+        // Send DM notification to each approver
+        for (const approverId of approverIds) {
+          await sendDirectMessage(
+            client as unknown as SlackClient,
+            approverId,
+            t("messages.approval_request_dm", {
+              requester: operatorId,
+              target: targetUserId,
+            }),
+          );
+        }
+
+        // Notify requester via DM
+        await sendDirectMessage(
+          client as unknown as SlackClient,
+          operatorId,
+          t("messages.approval_request_sent"),
+        );
+
+        // DO NOT call completeSuccess here!
+        // The function must remain incomplete to handle BlockActions (approve/deny buttons)
+        // completeSuccess will be called in the BlockActionsHandler
       }
 
-      // Update custom fields via API
-      console.log(t("logs.updating_custom_fields"));
-      const updateResponse = await fetch(
-        "https://slack.com/api/users.profile.set",
-        {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${adminToken}`,
-            "Content-Type": "application/json; charset=utf-8",
-          },
-          body: JSON.stringify({
-            user: targetUserId,
-            profile: { fields },
-          }),
-        },
+      return;
+    },
+  )
+  // Handle approval action
+  .addBlockActionsHandler(
+    [APPROVE_ACTION_ID],
+    async ({ action, body, client, env }) => {
+      await initI18n();
+      console.log(
+        t("logs.processing_approval", {
+          action: "approve",
+          reviewer: body.user.id,
+        }),
       );
 
-      const result = await updateResponse.json();
-      if (!result.ok) {
-        return {
-          response_action: "errors",
-          errors: {
-            target_user_block: t("errors.custom_field_update_failed", {
-              error: result.error,
+      const data = JSON.parse(action.value);
+      const {
+        requester_id,
+        target_user_id,
+        changes,
+        field_labels,
+        approver_ids,
+      } = data;
+      const reviewerId = body.user.id;
+
+      // Check if reviewer is authorized
+      if (approver_ids && !approver_ids.includes(reviewerId)) {
+        // Check if reviewer is admin/owner
+        const permResult = await checkUserPermissions(
+          client as unknown as SlackClient,
+          reviewerId,
+        );
+        if (!permResult.isAdminOrOwner) {
+          await client.chat.postEphemeral({
+            channel: body.channel?.id ?? "",
+            user: reviewerId,
+            text: t("errors.not_authorized_approver_multiple", {
+              approvers: approver_ids.map((id: string) => `<@${id}>`).join(
+                ", ",
+              ),
             }),
-          },
-        };
+          });
+          return;
+        }
+      }
+
+      // Get admin token
+      const adminToken = env.SLACK_ADMIN_USER_TOKEN;
+      if (!adminToken) {
+        await client.chat.postEphemeral({
+          channel: body.channel?.id ?? "",
+          user: reviewerId,
+          text: t("errors.missing_admin_token"),
+        });
+        return;
+      }
+
+      // Update custom fields
+      console.log(t("logs.updating_custom_fields"));
+      const result = await updateCustomFields(
+        target_user_id,
+        changes,
+        adminToken,
+      );
+
+      if (!result.ok) {
+        await client.chat.postEphemeral({
+          channel: body.channel?.id ?? "",
+          user: reviewerId,
+          text: t("errors.custom_field_update_failed", {
+            error: result.error ?? "",
+          }),
+        });
+        return;
       }
 
       console.log(t("logs.custom_fields_updated"));
 
-      // Send success message to operator
-      await client.chat.postMessage({
-        channel: metadata.operator_id,
-        text: t("messages.custom_fields_updated"),
+      // Update the message to show approval
+      const approvedText = t("messages.request_approved", {
+        approver: reviewerId,
+        requester: requester_id,
+        target: target_user_id,
       });
 
-      // Complete the function to allow workflow to finish
+      await client.chat.update({
+        channel: body.channel?.id ?? "",
+        ts: body.message?.ts ?? "",
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: approvedText,
+            },
+          },
+          {
+            type: "context",
+            elements: [
+              {
+                type: "mrkdwn",
+                text: t("messages.approved_at", {
+                  time: new Date().toISOString(),
+                }),
+              },
+            ],
+          },
+        ],
+        text: approvedText,
+      });
+
+      // Build changes text for notification
+      const changesText = Object.entries(changes as Record<string, string>)
+        .map(([fieldId, value]) =>
+          `• *${field_labels[fieldId] ?? fieldId}*: ${value}`
+        )
+        .join("\n");
+
+      // Notify requester via DM
+      await sendDirectMessage(
+        client as unknown as SlackClient,
+        requester_id,
+        t("messages.custom_fields_update_notification", {
+          target: target_user_id,
+          updater: reviewerId,
+          changes: changesText,
+        }),
+      );
+
+      // Complete the function
       await client.functions.completeSuccess({
         function_execution_id: body.function_data.execution_id,
         outputs: {
           success: true,
-          updated_user_id: targetUserId,
+          approval_required: true,
+          updated_user_id: target_user_id,
         },
       });
+    },
+  )
+  // Handle denial action
+  .addBlockActionsHandler(
+    [DENY_ACTION_ID],
+    async ({ action, body, client }) => {
+      await initI18n();
+      console.log(
+        t("logs.processing_approval", {
+          action: "deny",
+          reviewer: body.user.id,
+        }),
+      );
 
-      return { response_action: "clear" };
+      const data = JSON.parse(action.value);
+      const { requester_id, target_user_id, approver_ids } = data;
+      const reviewerId = body.user.id;
+
+      // Check if reviewer is authorized
+      if (approver_ids && !approver_ids.includes(reviewerId)) {
+        const permResult = await checkUserPermissions(
+          client as unknown as SlackClient,
+          reviewerId,
+        );
+        if (!permResult.isAdminOrOwner) {
+          await client.chat.postEphemeral({
+            channel: body.channel?.id ?? "",
+            user: reviewerId,
+            text: t("errors.not_authorized_approver_multiple", {
+              approvers: approver_ids.map((id: string) => `<@${id}>`).join(
+                ", ",
+              ),
+            }),
+          });
+          return;
+        }
+      }
+
+      // Update the message to show denial
+      const deniedText = t("messages.request_denied", {
+        approver: reviewerId,
+        requester: requester_id,
+        target: target_user_id,
+      });
+
+      await client.chat.update({
+        channel: body.channel?.id ?? "",
+        ts: body.message?.ts ?? "",
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: deniedText,
+            },
+          },
+          {
+            type: "context",
+            elements: [
+              {
+                type: "mrkdwn",
+                text: t("messages.denied_at", {
+                  time: new Date().toISOString(),
+                }),
+              },
+            ],
+          },
+        ],
+        text: deniedText,
+      });
+
+      // Notify requester via DM
+      await sendDirectMessage(
+        client as unknown as SlackClient,
+        requester_id,
+        t("messages.request_denied", {
+          approver: reviewerId,
+          requester: requester_id,
+          target: target_user_id,
+        }),
+      );
+
+      // Complete the function
+      await client.functions.completeSuccess({
+        function_execution_id: body.function_data.execution_id,
+        outputs: {
+          success: false,
+          approval_required: true,
+          updated_user_id: target_user_id,
+        },
+      });
     },
   )
   // Handle modal close without submission
   .addViewClosedHandler(
-    ["custom_fields_form_modal"],
+    [FORM_CALLBACK_ID],
     async ({ body, client }) => {
       await initI18n();
       console.log(t("logs.modal_closed"));
