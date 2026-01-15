@@ -169,13 +169,16 @@ interface BlockElement {
  *
  * @param field - Custom field definition
  * @param currentValue - Optional current value for the field
+ * @param blockIdSuffix - Optional suffix for block_id to force Slack to use new initial values
  * @returns Block Kit input block
  */
 function createFieldInput(
   field: CustomFieldDefinitionDetail,
   currentValue?: string,
+  blockIdSuffix?: string,
 ): BlockElement {
-  const blockId = `field_${field.id}`;
+  // Use suffix to force Slack to treat as new field and apply initial values
+  const blockId = `field_${field.id}${blockIdSuffix ?? ""}`;
   const actionId = `input_${field.id}`;
 
   switch (field.type) {
@@ -779,11 +782,14 @@ export default SlackFunction(
       ];
 
       // Add input element for each field with current values
+      // Use target user ID as suffix to force Slack to use initial values on user change
+      const blockIdSuffix = `_${inputs.user_id}`;
       for (const field of fields) {
         blocks.push(
           createFieldInput(
             field as unknown as CustomFieldDefinitionDetail,
             currentValues[field.id],
+            blockIdSuffix,
           ),
         );
       }
@@ -920,10 +926,20 @@ export default SlackFunction(
         ) ?? [];
 
       // Collect field updates
+      // Block IDs have format: field_${fieldId}_${targetUserId}
       const fieldUpdates: Record<string, string> = {};
       for (const [blockId, blockValue] of Object.entries(values)) {
         if (blockId.startsWith("field_")) {
-          const fieldId = blockId.replace("field_", "");
+          // Extract field ID by removing "field_" prefix and "_U..." suffix
+          const withoutPrefix = blockId.replace("field_", "");
+          // Find the last underscore followed by user ID pattern (U or W followed by alphanumeric)
+          const suffixMatch = withoutPrefix.match(/_[UW][A-Z0-9]+$/);
+          const fieldId = suffixMatch
+            ? withoutPrefix.slice(
+              0,
+              withoutPrefix.length - suffixMatch[0].length,
+            )
+            : withoutPrefix;
           const actionId = `input_${fieldId}`;
           const element = (blockValue as Record<string, unknown>)[actionId] as {
             selected_option?: { value: string };
@@ -1410,11 +1426,14 @@ export default SlackFunction(
       ];
 
       // Add input element for each field with selected user's current values
+      // Use target user ID as suffix to force Slack to use initial values
+      const blockIdSuffix = `_${selectedUserId}`;
       for (const field of fields ?? []) {
         blocks.push(
           createFieldInput(
             field as CustomFieldDefinitionDetail,
             currentValues[field.id],
+            blockIdSuffix,
           ),
         );
       }
