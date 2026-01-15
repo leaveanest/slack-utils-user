@@ -1085,7 +1085,11 @@ export default SlackFunction(
 
         // Send channel notification to the source channel
         if (sourceChannelId) {
-          await client.chat.postMessage({
+          console.log(
+            "[ViewSubmissionHandler] Sending channel notification to:",
+            sourceChannelId,
+          );
+          const channelResult = await client.chat.postMessage({
             channel: sourceChannelId,
             text: t("messages.custom_fields_update_notification", {
               target: targetUserId,
@@ -1093,6 +1097,15 @@ export default SlackFunction(
               changes: changesText,
             }),
           });
+          console.log(
+            "[ViewSubmissionHandler] Channel notification result:",
+            channelResult.ok,
+            channelResult.error,
+          );
+        } else {
+          console.log(
+            "[ViewSubmissionHandler] No source channel ID, skipping channel notification",
+          );
         }
 
         // Complete the function
