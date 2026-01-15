@@ -25,6 +25,17 @@ import {
 const FORM_CALLBACK_ID = "profile_update_form";
 const APPROVE_ACTION_ID = "approve_profile_update";
 const DENY_ACTION_ID = "deny_profile_update";
+const TARGET_USER_ACTION_ID = "target_user_select";
+
+/**
+ * User profile data for form initial values
+ */
+interface UserProfile {
+  display_name?: string;
+  title?: string;
+  phone?: string;
+  pronouns?: string;
+}
 
 /**
  * Function definition for ShowProfileUpdateForm
@@ -114,27 +125,43 @@ function buildLoadingView() {
 
 /**
  * Build profile update form view
+ *
+ * @param operatorId - The user operating the form
+ * @param isAdminOrOwner - Whether the operator is admin or owner
+ * @param approvers - List of available approvers
+ * @param channelId - Source channel ID
+ * @param targetUserId - Target user ID for the form
+ * @param initialValues - Optional initial values for form fields
  */
 function buildProfileFormView(
   operatorId: string,
   isAdminOrOwner: boolean,
   approvers: Array<{ id: string; name: string; real_name?: string }>,
   channelId: string,
+  targetUserId?: string,
+  initialValues?: UserProfile,
 ) {
   const blocks: Array<Record<string, unknown>> = [];
 
+  // Generate unique block_id suffix based on target user
+  // This forces Slack to treat inputs as new fields and use initial_value
+  // instead of preserving previous input values
+  const blockIdSuffix = targetUserId ? `_${targetUserId}` : "";
+
   // Target user selection (for admins, can select any user)
+  // dispatch_action: true enables triggering BlockActionsHandler on selection change
   blocks.push({
     type: "input",
     block_id: "target_user_block",
+    dispatch_action: true,
     element: {
       type: "users_select",
-      action_id: "target_user",
+      action_id: TARGET_USER_ACTION_ID,
       placeholder: {
         type: "plain_text",
         text: t("form.target_user_placeholder"),
       },
-      initial_user: operatorId,
+      initial_user: targetUserId ?? operatorId,
     },
     label: {
       type: "plain_text",
@@ -146,19 +173,24 @@ function buildProfileFormView(
     },
   });
 
-  // Display name
+  // Display name - with initial_value if provided
+  // deno-lint-ignore no-explicit-any
+  const displayNameElement: Record<string, any> = {
+    type: "plain_text_input",
+    action_id: "display_name",
+    placeholder: {
+      type: "plain_text",
+      text: t("form.display_name_placeholder"),
+    },
+  };
+  if (initialValues?.display_name) {
+    displayNameElement.initial_value = initialValues.display_name;
+  }
   blocks.push({
     type: "input",
-    block_id: "display_name_block",
+    block_id: `display_name_block${blockIdSuffix}`,
     optional: true,
-    element: {
-      type: "plain_text_input",
-      action_id: "display_name",
-      placeholder: {
-        type: "plain_text",
-        text: t("form.display_name_placeholder"),
-      },
-    },
+    element: displayNameElement,
     label: {
       type: "plain_text",
       text: t("form.display_name_label"),
@@ -169,19 +201,24 @@ function buildProfileFormView(
     },
   });
 
-  // Title
+  // Title - with initial_value if provided
+  // deno-lint-ignore no-explicit-any
+  const titleElement: Record<string, any> = {
+    type: "plain_text_input",
+    action_id: "title",
+    placeholder: {
+      type: "plain_text",
+      text: t("form.title_placeholder"),
+    },
+  };
+  if (initialValues?.title) {
+    titleElement.initial_value = initialValues.title;
+  }
   blocks.push({
     type: "input",
-    block_id: "title_block",
+    block_id: `title_block${blockIdSuffix}`,
     optional: true,
-    element: {
-      type: "plain_text_input",
-      action_id: "title",
-      placeholder: {
-        type: "plain_text",
-        text: t("form.title_placeholder"),
-      },
-    },
+    element: titleElement,
     label: {
       type: "plain_text",
       text: t("form.title_label"),
@@ -192,19 +229,24 @@ function buildProfileFormView(
     },
   });
 
-  // Phone
+  // Phone - with initial_value if provided
+  // deno-lint-ignore no-explicit-any
+  const phoneElement: Record<string, any> = {
+    type: "plain_text_input",
+    action_id: "phone",
+    placeholder: {
+      type: "plain_text",
+      text: t("form.phone_placeholder"),
+    },
+  };
+  if (initialValues?.phone) {
+    phoneElement.initial_value = initialValues.phone;
+  }
   blocks.push({
     type: "input",
-    block_id: "phone_block",
+    block_id: `phone_block${blockIdSuffix}`,
     optional: true,
-    element: {
-      type: "plain_text_input",
-      action_id: "phone",
-      placeholder: {
-        type: "plain_text",
-        text: t("form.phone_placeholder"),
-      },
-    },
+    element: phoneElement,
     label: {
       type: "plain_text",
       text: t("form.phone_label"),
@@ -215,19 +257,24 @@ function buildProfileFormView(
     },
   });
 
-  // Pronouns
+  // Pronouns - with initial_value if provided
+  // deno-lint-ignore no-explicit-any
+  const pronounsElement: Record<string, any> = {
+    type: "plain_text_input",
+    action_id: "pronouns",
+    placeholder: {
+      type: "plain_text",
+      text: t("form.pronouns_placeholder"),
+    },
+  };
+  if (initialValues?.pronouns) {
+    pronounsElement.initial_value = initialValues.pronouns;
+  }
   blocks.push({
     type: "input",
-    block_id: "pronouns_block",
+    block_id: `pronouns_block${blockIdSuffix}`,
     optional: true,
-    element: {
-      type: "plain_text_input",
-      action_id: "pronouns",
-      placeholder: {
-        type: "plain_text",
-        text: t("form.pronouns_placeholder"),
-      },
-    },
+    element: pronounsElement,
     label: {
       type: "plain_text",
       text: t("form.pronouns_label"),
@@ -311,7 +358,9 @@ function buildProfileFormView(
       operator_id: operatorId,
       is_admin_or_owner: isAdminOrOwner,
       approvers_available: approvers.length > 0,
+      approvers: approvers,
       channel_id: channelId,
+      target_user_id: targetUserId ?? operatorId,
     }),
     title: {
       type: "plain_text" as const,
@@ -602,6 +651,9 @@ async function fetchApprovers(
   return { approvers };
 }
 
+// deno-lint-ignore no-explicit-any
+type SlackClient = any;
+
 /**
  * Update profile using Admin User Token
  */
@@ -622,8 +674,41 @@ async function updateProfile(
   return { ok: result.ok === true, error: result.error };
 }
 
-// deno-lint-ignore no-explicit-any
-type SlackClient = any;
+/**
+ * Fetch user profile using users.profile.get API
+ *
+ * @param client - Slack API client
+ * @param userId - Target user ID
+ * @returns User profile data
+ */
+async function fetchUserProfile(
+  client: SlackClient,
+  userId: string,
+): Promise<{ ok: boolean; profile?: UserProfile; error?: string }> {
+  console.log(t("logs.fetching_user_profile", { userId }));
+
+  const response = await client.users.profile.get({ user: userId });
+
+  if (!response.ok) {
+    console.error(
+      t("errors.api_call_failed", { error: response.error ?? "unknown" }),
+    );
+    return { ok: false, error: response.error };
+  }
+
+  const profile: UserProfile = {
+    display_name: response.profile?.display_name ?? "",
+    title: response.profile?.title ?? "",
+    phone: response.profile?.phone ?? "",
+    pronouns: response.profile?.pronouns ?? "",
+  };
+
+  console.log(
+    t("logs.user_profile_fetched", { count: Object.keys(profile).length }),
+  );
+
+  return { ok: true, profile };
+}
 
 /**
  * Send a direct message to a user
@@ -744,20 +829,23 @@ export default SlackFunction(
       }
       const teamId = authResponse.team_id as string;
 
-      // 2. Fetch user permissions and approvers in parallel
+      // 2. Fetch user permissions, approvers, and initial profile in parallel
       console.log(
         "[Promise.all] Starting parallel fetch for user_id:",
         user_id,
       );
-      const [permResult, approversResult] = await Promise.all([
+      const [permResult, approversResult, profileResult] = await Promise.all([
         checkUserPermissions(client, user_id),
         fetchApprovers(adminToken, teamId, user_id),
+        fetchUserProfile(client, user_id),
       ]);
       console.log(
         "[Promise.all] Completed. permResult.error:",
         permResult.error,
         "approversResult.error:",
         approversResult.error,
+        "profileResult.error:",
+        profileResult.error,
       );
 
       if (permResult.error) {
@@ -774,17 +862,24 @@ export default SlackFunction(
         };
       }
 
+      // Profile fetch error is non-fatal, continue with empty profile
+      const initialProfile = profileResult.ok
+        ? profileResult.profile
+        : undefined;
+
       const approvers = approversResult.approvers;
       console.log(
         t("logs.authorized_users_fetched", { count: approvers.length }),
       );
 
-      // 3. Update modal with profile form
+      // 3. Update modal with profile form (including initial profile values)
       const formView = buildProfileFormView(
         user_id,
         permResult.isAdminOrOwner,
         approvers,
         channel_id,
+        user_id, // target user is initially the operator
+        initialProfile,
       );
       const updateResult = await client.views.update({
         view_id: viewId,
@@ -821,6 +916,7 @@ export default SlackFunction(
   .addViewSubmissionHandler(
     FORM_CALLBACK_ID,
     async ({ view, client, env }) => {
+      await initI18n();
       console.log(t("logs.form_submitted"));
 
       const values = view.state.values;
@@ -830,13 +926,21 @@ export default SlackFunction(
       const approversAvailable = metadata.approvers_available ?? false;
       const sourceChannelId = metadata.channel_id;
 
-      // Extract form values
+      // Extract target user from the fixed block_id
       const targetUserId =
-        values.target_user_block?.target_user?.selected_user ?? operatorId;
-      const displayName = values.display_name_block?.display_name?.value ?? "";
-      const title = values.title_block?.title?.value ?? "";
-      const phone = values.phone_block?.phone?.value ?? "";
-      const pronouns = values.pronouns_block?.pronouns?.value ?? "";
+        values.target_user_block?.target_user_select?.selected_user ??
+          operatorId;
+
+      // Block IDs are dynamic with target user suffix to force Slack to use new initial_value
+      const blockIdSuffix = `_${targetUserId}`;
+
+      // Extract form values using dynamic block_ids
+      const displayName =
+        values[`display_name_block${blockIdSuffix}`]?.display_name?.value ?? "";
+      const title = values[`title_block${blockIdSuffix}`]?.title?.value ?? "";
+      const phone = values[`phone_block${blockIdSuffix}`]?.phone?.value ?? "";
+      const pronouns =
+        values[`pronouns_block${blockIdSuffix}`]?.pronouns?.value ?? "";
       const approverIds =
         values.approver_block?.approvers?.selected_options?.map(
           (opt: { value: string }) => opt.value,
@@ -854,7 +958,9 @@ export default SlackFunction(
         return {
           response_action: "errors",
           errors: {
-            display_name_block: t("errors.no_fields_to_update"),
+            [`display_name_block${blockIdSuffix}`]: t(
+              "errors.no_fields_to_update",
+            ),
           },
         };
       }
@@ -997,6 +1103,7 @@ export default SlackFunction(
   .addBlockActionsHandler(
     [APPROVE_ACTION_ID],
     async ({ action, body, client, env }) => {
+      await initI18n();
       console.log(
         t("logs.processing_approval", {
           action: "approve",
@@ -1111,6 +1218,7 @@ export default SlackFunction(
   .addBlockActionsHandler(
     [DENY_ACTION_ID],
     async ({ action, body, client }) => {
+      await initI18n();
       console.log(
         t("logs.processing_approval", {
           action: "deny",
@@ -1184,5 +1292,106 @@ export default SlackFunction(
           updated_user_id: target_user_id,
         },
       });
+    },
+  )
+  // Handle target user selection change
+  .addBlockActionsHandler(
+    [TARGET_USER_ACTION_ID],
+    async ({ action, body, client }) => {
+      try {
+        await initI18n();
+        console.log(
+          "[BlockActionsHandler] Target user selection changed:",
+          action.selected_user,
+        );
+
+        // Get selected user ID from the action
+        const selectedUserId = action.selected_user;
+        if (!selectedUserId) {
+          console.error("[BlockActionsHandler] No user selected");
+          return;
+        }
+
+        // Get metadata from the view
+        const view = body.view;
+        if (!view) {
+          console.error("[BlockActionsHandler] No view found in body");
+          return;
+        }
+
+        console.log(
+          "[BlockActionsHandler] view.id:",
+          view.id,
+          "private_metadata:",
+          view.private_metadata,
+        );
+
+        const metadata = JSON.parse(view.private_metadata ?? "{}");
+        const {
+          operator_id: operatorId,
+          is_admin_or_owner: isAdminOrOwner,
+          approvers,
+          channel_id: channelId,
+        } = metadata;
+
+        console.log(
+          "[BlockActionsHandler] Fetching profile for user:",
+          selectedUserId,
+        );
+
+        // Fetch the selected user's profile
+        const profileResult = await fetchUserProfile(client, selectedUserId);
+        const newProfile = profileResult.ok ? profileResult.profile : undefined;
+
+        console.log(
+          "[BlockActionsHandler] Profile result ok:",
+          profileResult.ok,
+          "profile:",
+          JSON.stringify(newProfile),
+        );
+
+        // Rebuild the form with new initial values
+        const newFormView = buildProfileFormView(
+          operatorId,
+          isAdminOrOwner,
+          approvers ?? [],
+          channelId,
+          selectedUserId,
+          newProfile,
+        );
+
+        console.log(
+          "[BlockActionsHandler] Calling views.update with view_id:",
+          view.id,
+        );
+
+        // Update the modal
+        const updateResult = await client.views.update({
+          view_id: view.id,
+          view: newFormView,
+        });
+
+        if (!updateResult.ok) {
+          console.error(
+            "[BlockActionsHandler] views.update failed:",
+            updateResult.error,
+          );
+          console.error(
+            t("errors.modal_update_failed", {
+              error: updateResult.error ?? "",
+            }),
+          );
+        } else {
+          console.log(
+            "[BlockActionsHandler] Modal updated with new profile values",
+          );
+        }
+      } catch (error) {
+        console.error(
+          "[BlockActionsHandler] Unexpected error:",
+          error instanceof Error ? error.message : String(error),
+        );
+        console.error("[BlockActionsHandler] Stack:", error);
+      }
     },
   );

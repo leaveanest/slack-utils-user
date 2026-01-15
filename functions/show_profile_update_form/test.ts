@@ -136,6 +136,26 @@ function mockUsersInfoError(error: string) {
   };
 }
 
+/**
+ * Mock users.profile.get API response
+ */
+function mockUsersProfileGet(profile?: {
+  display_name?: string;
+  title?: string;
+  phone?: string;
+  pronouns?: string;
+}) {
+  return {
+    ok: true,
+    profile: {
+      display_name: profile?.display_name ?? "",
+      title: profile?.title ?? "",
+      phone: profile?.phone ?? "",
+      pronouns: profile?.pronouns ?? "",
+    },
+  };
+}
+
 Deno.test("ShowProfileUpdateForm - 関数定義が正しく設定されている", () => {
   assertEquals(
     ShowProfileUpdateFormDefinition.definition.callback_id,
@@ -161,6 +181,14 @@ Deno.test("ShowProfileUpdateForm - ローディングモーダルを表示して
   // Mock users.info for permission check
   mf.mock("POST@/api/users.info", () => {
     return new Response(JSON.stringify(mockUsersInfo({ id: "U001" })));
+  });
+
+  // Mock users.profile.get for initial profile values
+  mf.mock("POST@/api/users.profile.get", () => {
+    return new Response(JSON.stringify(mockUsersProfileGet({
+      display_name: "Test User",
+      title: "Engineer",
+    })));
   });
 
   // Mock admin.users.list for approvers
@@ -240,6 +268,14 @@ Deno.test("ShowProfileUpdateForm - Adminユーザーでもフォーム表示が�
     );
   });
 
+  // Mock users.profile.get for initial profile values
+  mf.mock("POST@/api/users.profile.get", () => {
+    return new Response(JSON.stringify(mockUsersProfileGet({
+      display_name: "Admin User",
+      title: "Administrator",
+    })));
+  });
+
   // Mock admin.users.list
   mf.mock("GET@/api/admin.users.list", () => {
     return new Response(
@@ -288,6 +324,14 @@ Deno.test("ShowProfileUpdateForm - 一般ユーザーでもフォーム表示が
 
   mf.mock("POST@/api/users.info", () => {
     return new Response(JSON.stringify(mockUsersInfo({ id: "U001" })));
+  });
+
+  // Mock users.profile.get for initial profile values
+  mf.mock("POST@/api/users.profile.get", () => {
+    return new Response(JSON.stringify(mockUsersProfileGet({
+      display_name: "Regular User",
+      title: "Developer",
+    })));
   });
 
   // Mock admin.users.list
