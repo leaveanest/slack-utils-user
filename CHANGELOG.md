@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.6.0](https://github.com/leaveanest/slack-utils-user/compare/v1.5.1...v1.6.0) (2026-01-15)
+
+
+### Features
+
+* 対象ユーザー変更時にプロフィール値を動的に反映 ([04107ac](https://github.com/leaveanest/slack-utils-user/commit/04107ace80079e67b46cb054e83f2059681bbfab))
+
+
+### Bug Fixes
+
+* カスタムフィールドフォームにも動的block_idを適用 ([a9465b6](https://github.com/leaveanest/slack-utils-user/commit/a9465b699662a2d3ae03c17e7700f65d8d14d2ab))
+
 ## [1.5.1](https://github.com/leaveanest/slack-utils-user/compare/v1.5.0...v1.5.1) (2026-01-15)
 
 
