@@ -66,6 +66,7 @@
     "custom_fields_approval_request_details": "*Requester:* <@{requester}>\n*Target User:* <@{target}>\n*Changes:*\n{changes}",
     "approval_request_dm": "📝 A new approval request has been sent to you\n\n*Requester:* <@{requester}>\n*Target User:* <@{target}>\n\nPlease approve or deny in the approval channel.",
     "no_changes": "No changes",
+    "changes_label": "Changes",
     "field_change": "• {field}: {old} → {new}",
     "loading_form": "⏳ Loading form...",
     "processing": "Processing...",

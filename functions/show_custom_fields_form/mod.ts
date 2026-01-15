@@ -1269,39 +1269,6 @@ export default SlackFunction(
 
       console.log(t("logs.custom_fields_updated"));
 
-      // Update the message to show approval
-      const approvedText = t("messages.request_approved", {
-        approver: reviewerId,
-        requester: requester_id,
-        target: target_user_id,
-      });
-
-      await client.chat.update({
-        channel: body.channel?.id ?? "",
-        ts: body.message?.ts ?? "",
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: approvedText,
-            },
-          },
-          {
-            type: "context",
-            elements: [
-              {
-                type: "mrkdwn",
-                text: t("messages.approved_at", {
-                  time: new Date().toISOString(),
-                }),
-              },
-            ],
-          },
-        ],
-        text: approvedText,
-      });
-
       // Build changes text with before → after diff for notification
       const changesText = Object.entries(changes)
         .map(([fieldId, change]) => {
@@ -1320,6 +1287,46 @@ export default SlackFunction(
           }
         })
         .join("\n");
+
+      // Update the message to show approval with changes
+      const approvedText = t("messages.request_approved", {
+        approver: reviewerId,
+        requester: requester_id,
+        target: target_user_id,
+      });
+
+      await client.chat.update({
+        channel: body.channel?.id ?? "",
+        ts: body.message?.ts ?? "",
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: approvedText,
+            },
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*${t("messages.changes_label")}:*\n${changesText}`,
+            },
+          },
+          {
+            type: "context",
+            elements: [
+              {
+                type: "mrkdwn",
+                text: t("messages.approved_at", {
+                  time: new Date().toISOString(),
+                }),
+              },
+            ],
+          },
+        ],
+        text: approvedText,
+      });
 
       // Notify requester via DM
       await sendDirectMessage(
