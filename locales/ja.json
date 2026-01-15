@@ -66,6 +66,7 @@
     "custom_fields_approval_request_details": "*リクエスター:* <@{requester}>\n*対象ユーザー:* <@{target}>\n*変更内容:*\n{changes}",
     "approval_request_dm": "📝 新しい承認リクエストがあなたに送信されました\n\n*リクエスター:* <@{requester}>\n*対象ユーザー:* <@{target}>\n\n承認チャンネルで承認または却下してください。",
     "no_changes": "変更なし",
+    "changes_label": "変更内容",
     "field_change": "• {field}: {old} → {new}",
     "loading_form": "⏳ フォームを読み込み中...",
     "processing": "処理中...",
