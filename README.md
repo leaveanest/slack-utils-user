@@ -71,7 +71,11 @@ LOCALE=ja
 
 ### Admin User Token の取得方法
 
-1. [Slack API Apps](https://api.slack.com/apps) で従来型 App を作成
+> **注意**: slack-utils-user（本アプリ）とは別に、従来型のSlack
+> Appを作成する必要があります。 これは、Deno Slack
+> SDKのワークフローアプリではUser Token（xoxp-）を直接取得できないためです。
+
+1. [Slack API Apps](https://api.slack.com/apps) で **新しい従来型 App を作成**
 2. 「OAuth & Permissions」→「User Token Scopes」に `users.profile:write` を追加
 3. 「Install to Workspace」でワークスペースにインストール
 4. 「User OAuth Token」（`xoxp-` で始まる）をコピー
@@ -137,7 +141,7 @@ deno test --allow-all functions/show_custom_fields_form/test.ts
 
 ## プロジェクト構成
 
-```
+```text
 slack-utils-user/
 ├── functions/              # Slack Functions
 │   ├── check_user_permissions/    # 権限チェック
