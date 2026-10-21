@@ -944,7 +944,7 @@ export default Manifest({
     "deno-slack-api/": "https://deno.land/x/deno_slack_api@2.8.0/",
     "std/": "https://deno.land/std@0.224.0/",
     "zod": "https://deno.land/x/zod@v3.23.8/mod.ts",
-    "mock-fetch/": "https://deno.land/x/mock_fetch@0.3.0/"
+    "mock-fetch/": "./test_utils/mock_fetch/"
   }
 }
 ```

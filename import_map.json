@@ -6,6 +6,6 @@
     "@semantic-release/": "npm:@semantic-release/",
     "std/": "https://deno.land/std@0.200.0/",
     "zod": "npm:zod@^3.24",
-    "mock-fetch/": "https://deno.land/x/mock_fetch@0.3.0/"
+    "mock-fetch/": "./test_utils/mock_fetch/"
   }
 }
